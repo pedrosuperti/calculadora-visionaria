@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Calculadora de Petróleo | Visionários Day 2026",
+  title: "Calculadora de Riqueza | Pedro Superti",
   description:
-    "Descubra o tamanho real do mercado que você está — ou poderia estar — acessando. Método SONDA por Pedro Superti.",
+    "Descubra quanta riqueza esta escondida no seu mercado — e como desbloquear em 90 dias.",
   openGraph: {
-    title: "Calculadora de Petróleo | Visionários Day 2026",
+    title: "Calculadora de Riqueza | Pedro Superti",
     description:
-      "Descubra o tamanho real do mercado que você está — ou poderia estar — acessando.",
+      "Descubra quanta riqueza esta escondida no seu mercado — e como desbloquear em 90 dias.",
     type: "website",
   },
 };

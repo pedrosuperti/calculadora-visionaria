@@ -1,136 +1,115 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import type { FormData } from "@/lib/types";
+import type { ConfirmResult } from "@/lib/types";
 
 const anthropic = new Anthropic();
 
-function buildPrompt(data: FormData): string {
-  const extras = [
-    data.pais && data.pais !== "Brasil" ? `País de atuação: ${data.pais}` : "",
-    data.publico ? `Público-alvo: ${data.publico}` : "",
-    data.problema ? `Problema que resolve: ${data.problema}` : "",
-    data.receita_atual ? `Receita atual: R$ ${data.receita_atual}/mês` : "",
-    data.modelo_atual ? `Modelo de negócio atual: ${data.modelo_atual}` : "",
-    data.anos ? `Anos de experiência: ${data.anos}` : "",
-  ].filter(Boolean).join("\n");
+interface DiagnoseInput {
+  nome: string;
+  mercado: string;
+  mercadoConfirmado: ConfirmResult;
+  dores: string[];
+  desejos: string[];
+}
 
-  return `Você é um estrategista de negócios exponenciais especializado em ajudar empreendedores estabelecidos a descobrir como usar Inteligência Artificial para transformar sua experiência de mercado em modelos escaláveis — novos produtos, novas fontes de receita, acesso a mercados maiores.
+function buildPrompt(data: DiagnoseInput): string {
+  return `Você é um estrategista de negócios exponenciais. Sua missão: analisar o mercado dessa pessoa e gerar 3 ideias concretas de riqueza que ela pode desbloquear — pelo menos 2 usando Inteligência Artificial.
 
-Contexto crítico: A pessoa usa ESSA ferramenta no Visionários Day, um evento sobre como criar modelos escaláveis com IA. Ela já tem experiência no mercado informado. O objetivo é DESPERTAR nela a visão de que existe um nível de oportunidade muito além do que ela está acessando hoje — e que a IA torna isso possível agora, mesmo sem equipe grande ou capital pesado.
+DADOS DO EMPREENDEDOR:
+- Nome: ${data.nome}
+- Mercado: "${data.mercado}"
+- Setor confirmado: ${data.mercadoConfirmado.setor_formatado}
+- TAM estimado: R$ ${data.mercadoConfirmado.tam_estimado}/ano
+- Dores principais: ${data.dores.join(", ")}
+- O que quer enxergar: ${data.desejos.join(", ")}
 
-Dados informados:
-- Mercado/setor: "${data.mercado}"
-- Ticket médio atual: R$ ${data.ticket}/mês por cliente
-${extras}
+REGRAS OBRIGATÓRIAS:
+1. Gere exatamente 3 ideias. Pelo menos 2 devem usar IA de forma central.
+2. Cada ideia deve ser ESPECÍFICA para esse mercado — não genérica. Use o nome do setor, do público, do problema real.
+3. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança.
+4. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
+5. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
+6. Os scores devem refletir análise real:
+   - score_atual (25-45): baseado nas dores selecionadas e na distância entre a situação atual e o potencial
+   - score_visionario (65-90): baseado no potencial combinado das 3 ideias + oportunidades com IA
+7. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
+8. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
+9. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias
+10. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
+11. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
 
-REGRAS para gerar as respostas:
-1. Os campos de N1/N2/N3 devem mostrar a MESMA experiência/conhecimento da pessoa em 3 níveis de ambição — sempre conectando com o que IA permite fazer hoje
-2. Os modelos alternativos devem ser todos baseados em IA — SaaS com IA, agente IA, comunidade + IA, plataforma IA, etc.
-3. O conselho_visionario deve ser UMA ação de validação rápida, específica, que inclua como IA poderia ser usada
-4. As sugestoes_foco devem mostrar ângulos onde IA multiplica o potencial — público que paga mais, mercado maior que IA permite acessar, nicho onde a barreira de entrada cai com IA
-5. O campo ia_muda_tudo deve ser a peça central: o que muda ESPECIFICAMENTE nesse mercado quando você usa IA — o que era impossível antes e agora não é
-6. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
-
-Responda SOMENTE com JSON válido, sem markdown. Use dados reais do mercado brasileiro (ou do país informado).
+Responda SOMENTE com JSON válido, sem markdown, sem comentários.
 
 {
-  "setor_formatado": "nome do setor em português",
-  "pais_mercado": "país ou região",
-  "profissionais_total": 150000,
-  "empresas_total": 45000,
-  "tam_anual": 2500000000,
-  "ticket_sugerido_min": 300,
-  "ticket_sugerido_max": 800,
-  "anos_experiencia": 10,
-
-  "nivel_n1": {
-    "label": "Produto / Serviço",
-    "descricao": "como é esse mercado quando você trabalha no N1 — sem IA, um cliente por vez, trocando tempo por dinheiro",
-    "potencial_anual": 800000,
-    "clientes_necessarios": 70,
-    "exemplo_empresa": "empresa que ficou no N1",
-    "teto": "por que esse modelo tem teto baixo"
-  },
-  "nivel_n2": {
-    "label": "Empresa Escalável",
-    "descricao": "como seria se você usasse IA para atender 10x mais clientes com o mesmo esforço — produto digital, ferramenta, metodologia sistematizada com IA",
-    "potencial_anual": 5000000,
-    "clientes_necessarios": 200,
-    "exemplo_empresa": "empresa que fez esse salto no setor",
-    "teto": "onde esse modelo ainda tem limite"
-  },
-  "nivel_n3": {
-    "label": "Plataforma de Mercado",
-    "descricao": "como seria se você usasse IA para criar uma plataforma que conecta, automatiza ou domina o setor inteiro — não só presta serviço, mas se torna a infraestrutura do mercado",
-    "potencial_anual": 50000000,
-    "clientes_necessarios": 1000,
-    "exemplo_empresa": "unicórnio ou startup de referência nesse setor",
-    "teto": "o horizonte desse modelo (quase sem teto)"
-  },
-
-  "modelo_sugerido_nivel": "n2",
-
-  "modelos_alternativos": [
+  "ideias": [
     {
-      "modelo": "Agente IA Vertical",
-      "descricao": "um agente de IA especializado nesse mercado específico que faz X tarefa que hoje consome horas de profissionais — construído em semanas, vendido como SaaS",
-      "potencial_anual": 8000000
+      "nome": "nome criativo e memorável para a ideia",
+      "descricao": "2-3 frases explicando a ideia de forma clara e empolgante",
+      "potencial_anual": 500000,
+      "tempo_retorno_dias": 60,
+      "concorrencia": "Baixo",
+      "dificuldade": "Facil",
+      "cuidados": "1 frase honesta sobre o principal risco ou cuidado",
+      "usa_ia": true,
+      "como_usa_ia": "1-2 frases explicando como IA é usada nessa ideia"
     },
     {
-      "modelo": "Plataforma + Comunidade",
-      "descricao": "metodologia proprietária + comunidade paga + ferramentas IA que automatizam o que você sabe fazer — recorrência sem limite de horas",
-      "potencial_anual": 5000000
+      "nome": "segunda ideia",
+      "descricao": "descrição",
+      "potencial_anual": 800000,
+      "tempo_retorno_dias": 90,
+      "concorrencia": "Medio",
+      "dificuldade": "Medio",
+      "cuidados": "cuidado principal",
+      "usa_ia": true,
+      "como_usa_ia": "como usa IA"
     },
     {
-      "modelo": "Marketplace Especializado",
-      "descricao": "plataforma que conecta oferta e demanda nesse mercado com IA mediando o match, qualidade, entrega — você constrói a infraestrutura que todo o setor usa",
-      "potencial_anual": 25000000
+      "nome": "terceira ideia",
+      "descricao": "descrição",
+      "potencial_anual": 300000,
+      "tempo_retorno_dias": 45,
+      "concorrencia": "Baixo",
+      "dificuldade": "Facil",
+      "cuidados": "cuidado principal",
+      "usa_ia": false,
+      "como_usa_ia": ""
     }
   ],
-
-  "ia_muda_tudo": {
-    "antes": "o que era impossível ou muito caro de fazer nesse mercado sem IA — em 1-2 frases diretas",
-    "depois": "o que se torna possível hoje com IA para quem já tem conhecimento desse mercado — específico, não genérico",
-    "janela": "por quanto tempo essa janela de vantagem existe antes de virar commodity — e por que agir agora"
+  "plano": {
+    "semanas_1_2": "o que fazer nas primeiras 2 semanas para validar a melhor ideia — específico e acionável",
+    "semanas_3_4": "o que fazer nas semanas 3-4 para criar a primeira versão usando IA",
+    "mes_2": "o que fazer no mês 2 para abrir para os primeiros clientes",
+    "mes_3": "o que fazer no mês 3 para ampliar e automatizar",
+    "horas_semana": 10,
+    "janela_ia": "por que AGORA é o momento certo para usar IA nesse mercado — específico, não genérico"
   },
-
-  "insight": "frase poderosa e provocativa sobre a oportunidade com IA nesse mercado (máx 18 palavras, sem clichê)",
-  "insight_n3": "o produto/plataforma com IA que esse mercado vai precisar nos próximos 3 anos que ainda não existe",
-  "benchmark_mundial": "empresa mundial que já faz isso com IA nesse setor",
-  "concentracao_regiao": "dados sobre concentração na região informada",
-
-  "sugestoes_foco": [
-    {
-      "tipo": "Com IA: Público de maior valor",
-      "sugestao": "subpúblico específico que pagaria 3–5x mais por uma solução com IA — e por quê esse público é mais acessível com IA do que manualmente",
-      "potencial_anual": 12000000,
-      "motivo": "o que IA torna possível para esse público que antes não era viável"
-    },
-    {
-      "tipo": "Com IA: Escala nacional",
-      "sugestao": "como usar IA para atender esse mercado em todo o Brasil (ou mundo) sem precisar de equipe proporcional — o que quebra a barreira geográfica",
-      "potencial_anual": 80000000,
-      "motivo": "como IA remove o gargalo de execução que antes limitava a escala"
-    },
-    {
-      "tipo": "Com IA: Novo produto",
-      "sugestao": "produto digital ou ferramenta IA que você poderia criar em 4–8 semanas usando seu conhecimento desse mercado — que não existia antes da IA",
-      "potencial_anual": 5000000,
-      "motivo": "por que seu conhecimento do mercado é o ativo mais valioso para construir isso"
-    }
-  ],
-
-  "conselho_visionario": "UMA ação de validação nos próximos 7 dias que combina seu conhecimento do mercado com IA — específica, acionável, que produz um sinal claro de demanda. Inclua como usar IA na execução. Ex: 'Crie um diagnóstico automatizado de NR-01 em 2h usando ChatGPT, mande para 10 contatos do RH e veja quem pede o resultado completo.'"
+  "scores": {
+    "score_atual": 35,
+    "bloqueios": [
+      "bloqueio 1 baseado nas dores",
+      "bloqueio 2",
+      "bloqueio 3"
+    ],
+    "score_visionario": 78,
+    "potenciais": [
+      "potencial 1 com valor em R$",
+      "potencial 2 com valor em R$",
+      "potencial 3 com valor em R$"
+    ],
+    "riqueza_total": 1600000
+  },
+  "insight": "frase provocativa sobre a oportunidade nesse mercado (máx 18 palavras)"
 }`;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const data: FormData = await request.json();
+    const data: DiagnoseInput = await request.json();
 
-    if (!data.mercado?.trim() || !data.ticket) {
+    if (!data.mercado?.trim() || !data.mercadoConfirmado) {
       return NextResponse.json(
-        { error: "Preencha o mercado e o ticket para continuar." },
+        { error: "Dados incompletos para gerar diagnóstico." },
         { status: 400 }
       );
     }
@@ -157,16 +136,26 @@ export async function POST(request: NextRequest) {
       throw new Error("JSON não encontrado");
     }
 
-    // Sanitize control characters
     const clean = jsonMatch[0].replace(/[\u0000-\u001F\u007F]/g, (ch) => {
       if (ch === "\n" || ch === "\r" || ch === "\t") return ch;
       return "";
     });
 
     const result = JSON.parse(clean);
+
+    // Ensure riqueza_total matches sum of ideas
+    if (result.ideias && result.scores) {
+      const sum = result.ideias.reduce(
+        (acc: number, i: { potencial_anual: number }) =>
+          acc + (i.potencial_anual || 0),
+        0
+      );
+      result.scores.riqueza_total = sum;
+    }
+
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Sonda error:", error);
+    console.error("Diagnose error:", error);
     return NextResponse.json(
       { error: "Erro ao gerar diagnóstico. Tente novamente." },
       { status: 500 }

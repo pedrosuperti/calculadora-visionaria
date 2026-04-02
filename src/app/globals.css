@@ -232,3 +232,202 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 .mb16{margin-bottom:16px}
 .mb20{margin-bottom:20px}
+
+/* ═══════════════════════════════════════════════════════
+   CALCULADORA DE RIQUEZA v2 — NEW CLASSES
+   ═══════════════════════════════════════════════════════ */
+
+/* Color vars */
+:root{
+  --green:#22C55E;
+  --green-bg:rgba(34,197,94,.08);
+  --green-border:rgba(34,197,94,.25);
+  --red:#EF4444;
+  --red-bg:rgba(239,68,68,.08);
+  --red-border:rgba(239,68,68,.25);
+  --orange:#F97316;
+  --gold:#C9A84C;
+  --text:#E2DDD4;
+  --bg:#07090F;
+}
+
+/* Progress dots */
+.progress-dots{display:flex;justify-content:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(201,168,76,.08)}
+.progress-dot{width:8px;height:8px;border-radius:50%;background:rgba(201,168,76,.12);transition:all .3s}
+.progress-dot.active{background:#C9A84C;box-shadow:0 0 8px rgba(201,168,76,.5);transform:scale(1.2)}
+.progress-dot.done{background:rgba(201,168,76,.45)}
+
+/* Step transitions */
+.step-content{animation:fadeup .4s ease}
+
+/* Step title */
+.step-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;color:#E2DDD4;line-height:1.15;margin-bottom:6px}
+@media(min-width:420px){.step-title{font-size:28px;letter-spacing:3px}}
+.step-subtitle{font-size:14px;color:rgba(226,221,212,.55);line-height:1.5;margin-bottom:20px}
+
+/* ─── STEP 0: LANDING ─── */
+.landing-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:#C9A84C;text-align:center;line-height:1.1;margin-bottom:6px}
+@media(min-width:420px){.landing-title{font-size:34px;letter-spacing:4px}}
+.landing-subtitle{font-size:13px;color:rgba(226,221,212,.6);text-align:center;line-height:1.5;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto}
+
+/* Comparison card */
+.comparison-card{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:24px;border:1px solid rgba(201,168,76,.12);overflow:hidden}
+.comparison-col{padding:16px 14px}
+.comparison-col.bloqueada{background:rgba(239,68,68,.04);border-right:1px solid rgba(201,168,76,.08)}
+.comparison-col.desbloqueada{background:rgba(34,197,94,.04)}
+.comparison-col-title{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;margin-bottom:12px;text-align:center}
+.comparison-col.bloqueada .comparison-col-title{color:var(--red)}
+.comparison-col.desbloqueada .comparison-col-title{color:var(--green)}
+.comparison-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px}
+.comparison-row:last-child{border-bottom:none}
+.comparison-label{color:rgba(226,221,212,.4);font-size:10px}
+.comparison-val{font-weight:600;font-size:12px}
+.comparison-col.bloqueada .comparison-val{color:rgba(226,221,212,.4)}
+.comparison-col.desbloqueada .comparison-val{color:var(--green)}
+
+.social-proof{text-align:center;font-size:11px;color:rgba(226,221,212,.3);letter-spacing:1px;margin-top:16px}
+
+.time-badge{text-align:center;font-size:12px;color:rgba(201,168,76,.6);margin-bottom:20px;letter-spacing:.5px}
+
+/* ─── STEPS 2/3: MULTI-SELECT ─── */
+.option-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.option-chip{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.12);padding:13px 16px;font-size:14px;color:rgba(226,221,212,.7);cursor:pointer;transition:all .2s;text-align:left;font-family:'Outfit',sans-serif;line-height:1.4}
+.option-chip:hover{border-color:rgba(201,168,76,.35);background:rgba(201,168,76,.04)}
+.option-chip.selected{border-color:rgba(201,168,76,.6);background:rgba(201,168,76,.08);color:#E2DDD4}
+.option-chip.selected::before{content:"✓ ";color:#C9A84C}
+.option-chip.highlight{border-left:3px solid rgba(201,168,76,.4)}
+.option-chip.highlight.selected{border-left-color:#C9A84C}
+.option-custom{margin-top:4px}
+
+/* ─── STEP 1b: CONFIRM ─── */
+.confirm-box{background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.15);padding:20px 18px;margin-bottom:20px}
+.confirm-sector{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#C9A84C;margin-bottom:10px}
+.confirm-desc{font-size:14px;color:rgba(226,221,212,.75);line-height:1.6;margin-bottom:12px}
+.confirm-tam{font-size:12px;color:rgba(201,168,76,.6);letter-spacing:1px}
+.confirm-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+
+/* ─── STEP 4: DRILLING v2 ─── */
+.drill-result{display:inline;font-size:12px;color:rgba(201,168,76,.7);margin-left:8px;font-weight:500}
+.drill-amount{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#C9A84C;letter-spacing:1px;margin-top:4px;display:block}
+@media(min-width:420px){.drill-amount{font-size:40px}}
+.drill-wow{margin-top:28px;animation:fadeup .5s ease}
+.drill-wow-text{font-size:16px;color:rgba(226,221,212,.85);line-height:1.5;margin-bottom:18px}
+
+/* ─── STEPS 5: IDEA SCREENS ─── */
+.idea-screen{animation:fadeup .4s ease}
+.idea-header{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.idea-badge{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;background:rgba(201,168,76,.15);color:#C9A84C;padding:4px 10px}
+.idea-ia-badge{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;font-weight:700}
+.idea-ia-badge.com-ia{background:rgba(0,229,255,.12);color:#00E5FF;border:1px solid rgba(0,229,255,.25)}
+.idea-ia-badge.sem-ia{background:rgba(226,221,212,.06);color:rgba(226,221,212,.4);border:1px solid rgba(226,221,212,.1)}
+.idea-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;color:#E2DDD4;margin-bottom:10px;line-height:1.15}
+@media(min-width:420px){.idea-name{font-size:30px;letter-spacing:3px}}
+.idea-desc{font-size:14px;color:rgba(226,221,212,.7);line-height:1.6;margin-bottom:20px}
+
+.idea-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.idea-metric{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.08);padding:12px}
+.idea-metric-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,.55);margin-bottom:4px}
+.idea-metric-val{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#E2DDD4;letter-spacing:1px}
+.idea-metric-val.gold{color:#C9A84C}
+
+.idea-cuidados{background:rgba(255,152,0,.05);border:1px solid rgba(255,152,0,.15);border-left:3px solid var(--orange);padding:12px 14px;margin-bottom:16px}
+.idea-cuidados-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,152,0,.7);margin-bottom:4px;font-weight:600}
+.idea-cuidados-text{font-size:13px;color:rgba(226,221,212,.65);line-height:1.5}
+
+.idea-ia-detail{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-left:3px solid #00E5FF;padding:12px 14px;margin-bottom:20px}
+.idea-ia-detail-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(0,229,255,.7);margin-bottom:4px;font-weight:600}
+.idea-ia-detail-text{font-size:13px;color:rgba(226,221,212,.7);line-height:1.5}
+
+/* ─── STEP 6: QUALIFICATION FORM ─── */
+.qual-form .f select{background:rgba(255,255,255,.03);color:#E2DDD4}
+.qual-form .f select option{background:#0E1521;color:#E2DDD4}
+
+/* ─── STEP 7: PLANO 90 DIAS ─── */
+.plano-intro{font-size:14px;color:rgba(226,221,212,.7);line-height:1.6;margin-bottom:20px;padding:14px 16px;background:rgba(0,229,255,.04);border-left:3px solid #00E5FF}
+.plano-roadmap{margin-bottom:20px}
+.plano-phase{padding:14px 16px;border-left:3px solid rgba(201,168,76,.3);margin-bottom:8px;background:rgba(255,255,255,.02);position:relative}
+.plano-phase::before{content:"";position:absolute;left:-7px;top:16px;width:10px;height:10px;border-radius:50%;background:#C9A84C;border:2px solid #0E1521}
+.plano-phase-label{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:#C9A84C;margin-bottom:4px}
+.plano-phase-desc{font-size:13px;color:rgba(226,221,212,.7);line-height:1.5}
+.plano-reality{background:rgba(255,152,0,.05);border:1px solid rgba(255,152,0,.15);padding:14px 16px;margin-bottom:20px;font-size:13px;color:rgba(255,152,0,.8);line-height:1.5}
+
+/* ─── STEP 8: DUAL SCORES ─── */
+.scores-container{display:flex;gap:20px;justify-content:center;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap}
+.score-block{text-align:center;flex:1;min-width:140px;max-width:220px}
+.score-block-label{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:12px;font-weight:600}
+.score-block.atual .score-block-label{color:var(--orange)}
+.score-block.visionario .score-block-label{color:var(--green)}
+
+.score-circle-wrap{position:relative;width:100px;height:100px;margin:0 auto 12px}
+.score-block.visionario .score-circle-wrap{width:130px;height:130px}
+.score-circle-svg{transform:rotate(-90deg)}
+.score-circle-bg{fill:none;stroke:rgba(255,255,255,.06);stroke-width:6}
+.score-circle-fill{fill:none;stroke-width:6;stroke-linecap:round;transition:stroke-dashoffset 1.5s ease}
+.score-block.atual .score-circle-fill{stroke:var(--orange)}
+.score-block.visionario .score-circle-fill{stroke:var(--green)}
+.score-circle-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px}
+.score-block.visionario .score-circle-num{font-size:42px}
+.score-block.atual .score-circle-num{color:var(--orange)}
+.score-block.visionario .score-circle-num{color:var(--green)}
+
+.score-items{text-align:left;margin-top:8px}
+.score-item{font-size:12px;color:rgba(226,221,212,.6);line-height:1.4;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.score-item:last-child{border-bottom:none}
+.score-block.atual .score-item::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--orange);margin-right:8px;vertical-align:middle}
+.score-block.visionario .score-item::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green);margin-right:8px;vertical-align:middle}
+
+.riqueza-total-box{text-align:center;padding:18px;background:rgba(34,197,94,.06);border:1px solid var(--green-border);margin-bottom:20px}
+.riqueza-total-label{font-size:10px;letter-spacing:2.5px;text-transform:uppercase;color:var(--green);margin-bottom:6px;opacity:.8}
+.riqueza-total-val{font-family:'Bebas Neue',sans-serif;font-size:38px;color:var(--green);letter-spacing:1px;line-height:1}
+@media(min-width:400px){.riqueza-total-val{font-size:46px}}
+.riqueza-total-sub{font-size:11px;color:rgba(226,221,212,.35);margin-top:4px}
+
+/* ─── STEP 9: ELEGIBILIDADE ─── */
+.elegivel-section{text-align:center;animation:fadeup .4s ease}
+.top-percent-text{font-size:14px;color:rgba(226,221,212,.7);margin-bottom:16px;line-height:1.5}
+.top-percent-text strong{color:#C9A84C}
+.elegivel-badge{display:inline-flex;align-items:center;gap:8px;background:var(--green-bg);border:1px solid var(--green-border);padding:10px 20px;margin-bottom:20px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;color:var(--green)}
+.elegivel-badge::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--green)}
+.elegivel-desc{font-size:14px;color:rgba(226,221,212,.7);line-height:1.6;margin-bottom:24px;max-width:440px;margin-left:auto;margin-right:auto}
+.elegivel-desc strong{color:#C9A84C}
+
+/* Summary card (screenshottable) */
+.summary-card{background:linear-gradient(160deg,#060A10 0%,#0D1520 60%,#060A10 100%);border:1px solid rgba(201,168,76,.2);padding:24px 20px;margin-bottom:24px;position:relative;overflow:hidden}
+.summary-card::before{content:"";position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(201,168,76,.1) 0%,transparent 70%);pointer-events:none}
+.summary-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.summary-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:#E2DDD4}
+.summary-sector{font-size:11px;color:rgba(201,168,76,.6);letter-spacing:1px;margin-top:2px}
+.summary-brand{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,.4)}
+.summary-ideas{margin-bottom:16px}
+.summary-idea{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(201,168,76,.08)}
+.summary-idea:last-child{border-bottom:none}
+.summary-idea-name{font-size:13px;color:rgba(226,221,212,.7)}
+.summary-idea-val{font-family:'Bebas Neue',sans-serif;font-size:15px;color:#C9A84C}
+.summary-scores{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.summary-score-item{text-align:center;padding:10px 8px;background:rgba(255,255,255,.03)}
+.summary-score-label{font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(226,221,212,.35);margin-bottom:4px}
+.summary-score-val{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px}
+.summary-footer{display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:1px solid rgba(201,168,76,.1)}
+.summary-footer-text{font-size:9px;color:rgba(226,221,212,.25);letter-spacing:1px}
+.summary-footer-brand{font-family:'Bebas Neue',sans-serif;font-size:11px;color:rgba(201,168,76,.5);letter-spacing:2px}
+
+/* Gold CTA button */
+.btn-gold{width:100%;background:linear-gradient(135deg,#C9A84C 0%,#E0BB5E 100%);color:#07090F;border:none;padding:16px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(201,168,76,.25)}
+@media(min-width:420px){.btn-gold{font-size:20px;letter-spacing:4px}}
+.btn-gold:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(201,168,76,.35)}
+
+/* Nurture (step 9b) */
+.nurture-tip{background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.12);padding:16px;margin-bottom:20px;font-size:14px;color:rgba(226,221,212,.7);line-height:1.6}
+.nurture-tip strong{color:#C9A84C}
+
+/* Bio upload */
+.bio-upload{margin-top:8px;margin-bottom:16px}
+.bio-upload-btn{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:1px dashed rgba(201,168,76,.2);padding:12px 16px;cursor:pointer;font-size:12px;color:rgba(201,168,76,.6);letter-spacing:1px;transition:all .2s;width:100%}
+.bio-upload-btn:hover{border-color:rgba(201,168,76,.4);background:rgba(201,168,76,.04)}
+.bio-upload-preview{margin-top:8px;position:relative;display:inline-block}
+.bio-upload-preview img{max-width:100%;max-height:200px;border:1px solid rgba(201,168,76,.15)}
+.bio-upload-remove{position:absolute;top:4px;right:4px;width:24px;height:24px;background:rgba(0,0,0,.7);border:1px solid rgba(201,168,76,.3);color:#E2DDD4;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* Loading spinner */
+.loading-inline{display:inline-block;width:14px;height:14px;border:2px solid rgba(201,168,76,.2);border-top-color:#C9A84C;border-radius:50%;animation:spin .6s linear infinite;margin-left:8px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}

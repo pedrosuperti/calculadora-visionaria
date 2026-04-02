@@ -1,63 +1,74 @@
-export interface FormData {
+// Wizard step identifiers
+export type WizardStep = 0 | 1 | "1b" | 2 | 3 | 4 | "5a" | "5b" | "5c" | 6 | 7 | 8 | 9;
+
+// All wizard data collected across steps
+export interface WizardData {
+  nome: string;
   mercado: string;
-  pais: string;
-  ticket: string;
-  anos: string;
-  publico: string;
-  problema: string;
-  receita_atual: string;
-  modelo_atual: string;
+  bioImagem: string | null; // base64 data URL from bio screenshot
+  mercadoConfirmado: ConfirmResult | null;
+  dores: string[];
+  doresCustom: string;
+  desejos: string[];
+  desejosCustom: string;
+  // Step 6 qualification
+  whatsapp: string;
+  faturamento: string;
+  equipe: string;
+  anosExperiencia: string;
+  investimento: string;
 }
 
-export interface NivelData {
-  label: string;
-  descricao: string;
-  potencial_anual: number;
-  clientes_necessarios: number;
-  exemplo_empresa: string;
-  teto: string;
-}
-
-export interface ModeloAlternativo {
-  modelo: string;
-  descricao: string;
-  potencial_anual: number;
-}
-
-export interface IAMudaTudo {
-  antes: string;
-  depois: string;
-  janela: string;
-}
-
-export interface SugestaoFoco {
-  tipo: string;
-  sugestao: string;
-  potencial_anual: number;
-  motivo: string;
-}
-
-export interface DiagnosticoResult {
+// API /confirm response (Step 1b)
+export interface ConfirmResult {
   setor_formatado: string;
-  pais_mercado: string;
-  profissionais_total: number;
-  empresas_total: number;
-  tam_anual: number;
-  ticket_sugerido_min: number;
-  ticket_sugerido_max: number;
-  anos_experiencia: number;
-  nivel_n1: NivelData;
-  nivel_n2: NivelData;
-  nivel_n3: NivelData;
-  modelo_sugerido_nivel: string;
-  modelos_alternativos: ModeloAlternativo[];
-  ia_muda_tudo: IAMudaTudo;
-  insight: string;
-  insight_n3: string;
-  benchmark_mundial: string;
-  concentracao_regiao: string;
-  sugestoes_foco: SugestaoFoco[];
-  conselho_visionario: string;
+  descricao: string;
+  tam_estimado: number;
 }
 
-export type Step = "form" | "drilling" | "result";
+// Each idea from /diagnose (Steps 5a/5b/5c)
+export interface IdeiaRiqueza {
+  nome: string;
+  descricao: string;
+  potencial_anual: number;
+  tempo_retorno_dias: number;
+  concorrencia: "Baixo" | "Medio" | "Alto";
+  dificuldade: "Facil" | "Medio" | "Avancado";
+  cuidados: string;
+  usa_ia: boolean;
+  como_usa_ia: string;
+}
+
+// 90-day plan (Step 7)
+export interface Plano90Dias {
+  semanas_1_2: string;
+  semanas_3_4: string;
+  mes_2: string;
+  mes_3: string;
+  horas_semana: number;
+  janela_ia: string;
+}
+
+// Dual score data (Step 8)
+export interface ScoreData {
+  score_atual: number; // 25-45
+  bloqueios: string[]; // 3 items
+  score_visionario: number; // 65-90
+  potenciais: string[]; // 3 items
+  riqueza_total: number; // sum of 3 ideas' potencial_anual
+}
+
+// Full /diagnose response
+export interface DiagnoseResult {
+  ideias: IdeiaRiqueza[]; // exactly 3
+  plano: Plano90Dias;
+  scores: ScoreData;
+  insight: string;
+}
+
+// Lead qualification result (Step 9)
+export interface LeadResult {
+  qualified: boolean;
+  internalScore: number;
+  topPercent: number; // e.g. 8 = top 8%
+}
