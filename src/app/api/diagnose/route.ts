@@ -1,119 +1,122 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
-import type { FormData } from "@/lib/types";
+import type { ConfirmResult } from "@/lib/types";
 
 const anthropic = new Anthropic();
 
-function buildPrompt(data: FormData): string {
-  const ticketInfo = data.ticketMedio
-    ? `Ticket médio por cliente: R$${data.ticketMedio.toLocaleString("pt-BR")}`
-    : "Ticket médio: não informado";
-  const clientesInfo = data.clientesAtivos
-    ? `Clientes ativos: ${data.clientesAtivos}`
-    : "Clientes ativos: não informado";
-  const anosInfo = data.anosNegocio
-    ? `Anos no negócio: ${data.anosNegocio}`
-    : "Anos no negócio: não informado";
-
-  return `Você é um consultor estratégico de negócios especializado em transformação digital e crescimento exponencial com IA. Seu papel é analisar o perfil de um empreendedor e gerar um diagnóstico de oportunidades com números realistas e aplicáveis.
-
-PERFIL DO EMPREENDEDOR:
-- Setor/tipo de negócio: ${data.setor}
-- Faturamento mensal atual: R$${data.faturamento.toLocaleString("pt-BR")}
-- ${ticketInfo}
-- ${clientesInfo}
-- ${anosInfo}
-- Maior gargalo atual: ${data.maiorGargalo}
-- Uso atual de IA: ${data.usoIA}
-
-INSTRUÇÕES:
-
-Gere um diagnóstico completo seguindo EXATAMENTE a estrutura JSON abaixo. Todas as ideias devem ser:
-1. ESPECÍFICAS para o setor informado (nunca genéricas)
-2. PRÁTICAS e implementáveis (o empreendedor deve conseguir visualizar a execução)
-3. Com NOMES MEMORÁVEIS e criativos (ex: "Máquina de Indicação Automática", "Radar de Clientes Inativos")
-4. Com IMPACTOS FINANCEIROS realistas baseados no faturamento informado
-5. Com FONTES reais e verificáveis (use dados de mercado conhecidos: McKinsey, Deloitte, Gartner, IBGE, Sebrae, Statista, ou pesquisas setoriais reais)
-
-REGRAS DE CÁLCULO:
-- Ideias do Milão (curto prazo): impacto típico entre 2% e 10% do faturamento mensal
-- Ideias do Milhão (médio prazo): impacto típico entre 15% e 60% do faturamento mensal
-- Ideia do Bilhão (transformadora): projeção de 12-18 meses com potencial de 2x a 5x o faturamento
-- Projeções "sem mudança": crescimento orgânico de 3-5% ao ano
-- Projeções "com ideias": soma dos impactos aplicados progressivamente
-- Valuation: use múltiplos realistas para o setor (tipicamente 2x a 8x faturamento anual)
-- Riqueza desbloqueável: diferença entre o cenário "com ideias" e "sem mudança" em 12 meses
-
-CALIBRAÇÃO POR USO DE IA:
-- Se "Não uso IA": sugira ideias mais acessíveis, com menor barreira técnica
-- Se "Uso básico": sugira automações intermediárias e integrações
-- Se "Já uso IA integrada": sugira estratégias avançadas de escala e novos modelos
-
-Responda APENAS com JSON válido, sem markdown, sem comentários, sem texto antes ou depois. O JSON deve seguir exatamente esta estrutura:
-
-{
-  "ideiasDoMilao": [
-    {
-      "nome": "string (nome memorável e criativo)",
-      "descricao": "string (2-3 frases práticas e específicas para o setor)",
-      "impactoMin": number (valor em reais),
-      "impactoMax": number (valor em reais),
-      "prazo": "string (ex: '1 a 2 semanas')",
-      "fonte": "string (fonte real: 'Nome do estudo/instituição, ano')"
-    }
-  ],
-  "ideiasDoMilhao": [
-    {
-      "nome": "string",
-      "descricao": "string (2-3 frases)",
-      "impactoMin": number,
-      "impactoMax": number,
-      "prazo": "string (ex: '2 a 3 meses')",
-      "fonte": "string"
-    }
-  ],
-  "ideiaDoBlihao": {
-    "tipo": "novo_produto" | "recorrencia" | "novo_mercado",
-    "nome": "string",
-    "descricao": "string (3-4 frases com visão transformadora)",
-    "visao12a18m": "string (como o negócio fica em 12-18 meses)",
-    "dadoMercado": "string (dado real de mercado com número)",
-    "fonte": "string (fonte verificável)",
-    "impactoMin": number,
-    "impactoMax": number
-  },
-  "projecoes": {
-    "faturamento6mSemMudanca": number,
-    "faturamento6mComIdeias": number,
-    "faturamento12mSemMudanca": number,
-    "faturamento12mComIdeias": number
-  },
-  "valuation": {
-    "estimativaAtual": number,
-    "potencialComIdeias": number,
-    "multiploSetor": number
-  },
-  "riquezaDesbloqueavel12m": number,
-  "insightFinal": "string (1-2 frases poderosas e personalizadas sobre a oportunidade deste empreendedor específico)"
+interface DiagnoseInput {
+  nome: string;
+  mercado: string;
+  mercadoConfirmado: ConfirmResult;
+  dores: string[];
+  desejos: string[];
 }
 
-Gere EXATAMENTE 3 ideias do Milão e 3 ideias do Milhão. A ideia do Bilhão deve ser 1 única ideia transformadora.`;
+function buildPrompt(data: DiagnoseInput): string {
+  return `Você é um estrategista de negócios exponenciais. Sua missão: analisar o mercado dessa pessoa e gerar 3 ideias concretas de riqueza que ela pode desbloquear — pelo menos 2 usando Inteligência Artificial.
+
+DADOS DO EMPREENDEDOR:
+- Nome: ${data.nome}
+- Mercado: "${data.mercado}"
+- Setor confirmado: ${data.mercadoConfirmado.setor_formatado}
+- TAM estimado: R$ ${data.mercadoConfirmado.tam_estimado}/ano
+- Dores principais: ${data.dores.join(", ")}
+- O que quer enxergar: ${data.desejos.join(", ")}
+
+REGRAS OBRIGATÓRIAS:
+1. Gere exatamente 3 ideias. Pelo menos 2 devem usar IA de forma central.
+2. Cada ideia deve ser ESPECÍFICA para esse mercado — não genérica. Use o nome do setor, do público, do problema real.
+3. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança.
+4. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
+5. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
+6. Os scores devem refletir análise real:
+   - score_atual (25-45): baseado nas dores selecionadas e na distância entre a situação atual e o potencial
+   - score_visionario (65-90): baseado no potencial combinado das 3 ideias + oportunidades com IA
+7. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
+8. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
+9. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias
+10. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
+11. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
+
+Responda SOMENTE com JSON válido, sem markdown, sem comentários.
+
+{
+  "ideias": [
+    {
+      "nome": "nome criativo e memorável para a ideia",
+      "descricao": "2-3 frases explicando a ideia de forma clara e empolgante",
+      "potencial_anual": 500000,
+      "tempo_retorno_dias": 60,
+      "concorrencia": "Baixo",
+      "dificuldade": "Facil",
+      "cuidados": "1 frase honesta sobre o principal risco ou cuidado",
+      "usa_ia": true,
+      "como_usa_ia": "1-2 frases explicando como IA é usada nessa ideia"
+    },
+    {
+      "nome": "segunda ideia",
+      "descricao": "descrição",
+      "potencial_anual": 800000,
+      "tempo_retorno_dias": 90,
+      "concorrencia": "Medio",
+      "dificuldade": "Medio",
+      "cuidados": "cuidado principal",
+      "usa_ia": true,
+      "como_usa_ia": "como usa IA"
+    },
+    {
+      "nome": "terceira ideia",
+      "descricao": "descrição",
+      "potencial_anual": 300000,
+      "tempo_retorno_dias": 45,
+      "concorrencia": "Baixo",
+      "dificuldade": "Facil",
+      "cuidados": "cuidado principal",
+      "usa_ia": false,
+      "como_usa_ia": ""
+    }
+  ],
+  "plano": {
+    "semanas_1_2": "o que fazer nas primeiras 2 semanas para validar a melhor ideia — específico e acionável",
+    "semanas_3_4": "o que fazer nas semanas 3-4 para criar a primeira versão usando IA",
+    "mes_2": "o que fazer no mês 2 para abrir para os primeiros clientes",
+    "mes_3": "o que fazer no mês 3 para ampliar e automatizar",
+    "horas_semana": 10,
+    "janela_ia": "por que AGORA é o momento certo para usar IA nesse mercado — específico, não genérico"
+  },
+  "scores": {
+    "score_atual": 35,
+    "bloqueios": [
+      "bloqueio 1 baseado nas dores",
+      "bloqueio 2",
+      "bloqueio 3"
+    ],
+    "score_visionario": 78,
+    "potenciais": [
+      "potencial 1 com valor em R$",
+      "potencial 2 com valor em R$",
+      "potencial 3 com valor em R$"
+    ],
+    "riqueza_total": 1600000
+  },
+  "insight": "frase provocativa sobre a oportunidade nesse mercado (máx 18 palavras)"
+}`;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const data: FormData = await request.json();
+    const data: DiagnoseInput = await request.json();
 
-    if (!data.setor || !data.faturamento || !data.maiorGargalo || !data.usoIA) {
+    if (!data.mercado?.trim() || !data.mercadoConfirmado) {
       return NextResponse.json(
-        { error: "Campos obrigatórios não preenchidos" },
+        { error: "Dados incompletos para gerar diagnóstico." },
         { status: 400 }
       );
     }
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1500,
+      max_tokens: 4000,
       messages: [
         {
           role: "user",
@@ -124,13 +127,35 @@ export async function POST(request: NextRequest) {
 
     const textBlock = message.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
-      throw new Error("Resposta inesperada da API");
+      throw new Error("Resposta vazia");
     }
 
-    const result = JSON.parse(textBlock.text);
+    const text = textBlock.text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("JSON não encontrado");
+    }
+
+    const clean = jsonMatch[0].replace(/[\u0000-\u001F\u007F]/g, (ch) => {
+      if (ch === "\n" || ch === "\r" || ch === "\t") return ch;
+      return "";
+    });
+
+    const result = JSON.parse(clean);
+
+    // Ensure riqueza_total matches sum of ideas
+    if (result.ideias && result.scores) {
+      const sum = result.ideias.reduce(
+        (acc: number, i: { potencial_anual: number }) =>
+          acc + (i.potencial_anual || 0),
+        0
+      );
+      result.scores.riqueza_total = sum;
+    }
+
     return NextResponse.json(result);
   } catch (error) {
-    console.error("Erro no diagnóstico:", error);
+    console.error("Diagnose error:", error);
     return NextResponse.json(
       { error: "Erro ao gerar diagnóstico. Tente novamente." },
       { status: 500 }

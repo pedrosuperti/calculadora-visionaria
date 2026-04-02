@@ -1,73 +1,74 @@
-export interface FormData {
-  setor: string;
-  faturamento: number;
-  ticketMedio: number | null;
-  clientesAtivos: number | null;
-  anosNegocio: number | null;
-  maiorGargalo: string;
-  usoIA: string;
-}
+// Wizard step identifiers
+export type WizardStep = 0 | 1 | "1b" | 2 | 3 | 4 | "5a" | "5b" | "5c" | 6 | 7 | 8 | 9;
 
-export interface Ideia {
+// All wizard data collected across steps
+export interface WizardData {
   nome: string;
-  descricao: string;
-  impactoMin: number;
-  impactoMax: number;
-  prazo: string;
-  fonte: string;
-}
-
-export interface IdeiaBilhao {
-  tipo: "novo_produto" | "recorrencia" | "novo_mercado";
-  nome: string;
-  descricao: string;
-  visao12a18m: string;
-  dadoMercado: string;
-  fonte: string;
-  impactoMin: number;
-  impactoMax: number;
-}
-
-export interface Projecoes {
-  faturamento6mSemMudanca: number;
-  faturamento6mComIdeias: number;
-  faturamento12mSemMudanca: number;
-  faturamento12mComIdeias: number;
-}
-
-export interface Valuation {
-  estimativaAtual: number;
-  potencialComIdeias: number;
-  multiploSetor: number;
-}
-
-export interface DiagnosticoResult {
-  ideiasDoMilao: Ideia[];
-  ideiasDoMilhao: Ideia[];
-  ideiaDoBlihao: IdeiaBilhao;
-  projecoes: Projecoes;
-  valuation: Valuation;
-  riquezaDesbloqueavel12m: number;
-  insightFinal: string;
-}
-
-export type Screen = "form" | "loading" | "milao" | "milhao" | "bilhao" | "resumo" | "cta";
-
-export interface LeadData {
-  nome: string;
+  mercado: string;
+  bioImagem: string | null; // base64 data URL from bio screenshot
+  mercadoConfirmado: ConfirmResult | null;
+  dores: string[];
+  doresCustom: string;
+  desejos: string[];
+  desejosCustom: string;
+  // Step 6 qualification
   whatsapp: string;
+  faturamento: string;
+  equipe: string;
+  anosExperiencia: string;
+  investimento: string;
 }
 
-export const GARGALO_OPTIONS = [
-  "Atrair novos clientes",
-  "Converter leads em vendas",
-  "Reter clientes e aumentar recorrência",
-  "Escalar sem perder qualidade",
-  "Automatizar processos operacionais",
-];
+// API /confirm response (Step 1b)
+export interface ConfirmResult {
+  setor_formatado: string;
+  descricao: string;
+  tam_estimado: number;
+}
 
-export const USO_IA_OPTIONS = [
-  "Não uso IA no meu negócio",
-  "Uso de forma básica (ChatGPT, etc.)",
-  "Já uso IA integrada em processos",
-];
+// Each idea from /diagnose (Steps 5a/5b/5c)
+export interface IdeiaRiqueza {
+  nome: string;
+  descricao: string;
+  potencial_anual: number;
+  tempo_retorno_dias: number;
+  concorrencia: "Baixo" | "Medio" | "Alto";
+  dificuldade: "Facil" | "Medio" | "Avancado";
+  cuidados: string;
+  usa_ia: boolean;
+  como_usa_ia: string;
+}
+
+// 90-day plan (Step 7)
+export interface Plano90Dias {
+  semanas_1_2: string;
+  semanas_3_4: string;
+  mes_2: string;
+  mes_3: string;
+  horas_semana: number;
+  janela_ia: string;
+}
+
+// Dual score data (Step 8)
+export interface ScoreData {
+  score_atual: number; // 25-45
+  bloqueios: string[]; // 3 items
+  score_visionario: number; // 65-90
+  potenciais: string[]; // 3 items
+  riqueza_total: number; // sum of 3 ideas' potencial_anual
+}
+
+// Full /diagnose response
+export interface DiagnoseResult {
+  ideias: IdeiaRiqueza[]; // exactly 3
+  plano: Plano90Dias;
+  scores: ScoreData;
+  insight: string;
+}
+
+// Lead qualification result (Step 9)
+export interface LeadResult {
+  qualified: boolean;
+  internalScore: number;
+  topPercent: number; // e.g. 8 = top 8%
+}
