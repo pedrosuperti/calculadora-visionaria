@@ -1,44 +1,62 @@
 "use client";
 
-import { useState, useRef } from "react";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from "recharts";
-import type { FormData, DiagnosticoResult, Step } from "@/lib/types";
+import { useState, useRef, useEffect, useCallback } from "react";
+import type {
+  WizardStep,
+  WizardData,
+  ConfirmResult,
+  DiagnoseResult,
+  LeadResult,
+} from "@/lib/types";
 
-// ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const SONDA_STEPS = [
-  "Mapeando tamanho do mercado...",
-  "Estimando concentração regional...",
-  "Calculando potencial por nível...",
-  "Buscando benchmarks do setor...",
-  "Gerando análise Visionária...",
+// ─── CONSTANTS ───────────────────────────────────────────────────────────────
+
+const DORES_OPTIONS = [
+  { id: "Dependo demais da minha presenca", label: "Dependo demais da minha presença", highlight: true },
+  { id: "Bati num teto de faturamento", label: "Bati num teto de faturamento", highlight: true },
+  { id: "Tenho diferenciais mas ninguem percebe", label: "Tenho diferenciais mas ninguém percebe", highlight: false },
+  { id: "Vendas inconsistentes", label: "Vendas inconsistentes", highlight: false },
+  { id: "Concorrencia copiando ou baixando preco", label: "Concorrência copiando ou baixando preço", highlight: false },
+  { id: "Nao sei usar IA de forma pratica", label: "Não sei usar IA de forma prática", highlight: false },
+  { id: "Quero criar algo escalavel", label: "Quero criar algo escalável", highlight: false },
 ];
 
-const NIVEL_COLORS = { n1: "#4FC3F7", n2: "#C9A84C", n3: "#FF8A65" };
-
-const VISIONARIO_LABELS = [
-  { min: 0, max: 30, label: "EXPLORADOR", color: "#7986CB", desc: "Mercado mapeado. Ainda há muito a descobrir sobre o potencial real." },
-  { min: 30, max: 55, label: "PROSPECTOR", color: "#4FC3F7", desc: "Oportunidade identificada. Escolha onde perfurar antes que outros cheguem." },
-  { min: 55, max: 75, label: "PERFURADOR", color: "#C9A84C", desc: "Oportunidade clara, modelo definido, experiência na mão. Hora de executar." },
-  { min: 75, max: 90, label: "ESTRATEGISTA", color: "#FF8A65", desc: "Mercado grande + contexto forte + ambição alta. Poucas pessoas chegam aqui." },
-  { min: 90, max: 101, label: "VISIONÁRIO", color: "#E8D44D", desc: "Petróleo confirmado em escala Dubai. Construa a sonda agora — a janela está aberta." },
+const DESEJOS_OPTIONS = [
+  { id: "A oportunidade de milhoes escondida no meu mercado", label: "A oportunidade de milhões escondida no meu mercado", highlight: true },
+  { id: "Como automatizar o que me prende na operacao", label: "Como automatizar o que me prende na operação", highlight: false },
+  { id: "Um produto que vende sozinho enquanto eu durmo", label: "Um produto que vende sozinho enquanto eu durmo", highlight: false },
+  { id: "O diferencial que me tornaria imbativel", label: "O diferencial que me tornaria imbatível", highlight: false },
+  { id: "O nicho onde ninguem esta olhando", label: "O nicho onde ninguém está olhando", highlight: false },
+  { id: "Como dobrar o faturamento sem dobrar o trabalho", label: "Como dobrar o faturamento sem dobrar o trabalho", highlight: false },
 ];
 
-const TIERS = [
-  { key: "dubai", label: "DUBAI", icon: "🛢️", range: "Acima de R$50M", color: "#FFB300", bg: "rgba(255,179,0,.08)", min: 5e7, desc: "Mercado de escala global. Empresas bilionárias nascem aqui." },
-  { key: "oceano", label: "OCEANO", icon: "🌊", range: "R$5M – R$50M", color: "#FF8A65", bg: "rgba(255,138,101,.08)", min: 5e6, desc: "Volume real para construir uma empresa sólida e relevante." },
-  { key: "rio", label: "RIO", icon: "💧", range: "R$500k – R$5M", color: "#4FC3F7", bg: "rgba(79,195,247,.08)", min: 5e5, desc: "Nicho com tração. Ticket alto faz toda a diferença." },
-  { key: "poca", label: "POÇA", icon: "〰️", range: "Até R$500k", color: "#7986CB", bg: "rgba(121,134,203,.08)", min: 0, desc: "Mercado pequeno. Pode ser suficiente — se o ticket compensar." },
+const DRILL_STEPS = [
+  "Analisando seu mercado...",
+  "Mapeando oportunidades escondidas...",
+  "Calculando riqueza disponível...",
+  "Selecionando as 3 melhores para você...",
 ];
 
-// ─── UTILS ────────────────────────────────────────────────────────────────────
+const FATURAMENTO_OPTIONS = [
+  "Até R$10k",
+  "R$10k-30k",
+  "R$30k-50k",
+  "R$50k-100k",
+  "R$100k-500k",
+  "Acima de R$500k",
+];
+
+const EQUIPE_OPTIONS = ["Só eu", "2-5", "6-15", "Mais de 15"];
+
+const INVESTIMENTO_OPTIONS = [
+  "Ate R$2k",
+  "R$2k-5k",
+  "R$5k-15k",
+  "Acima de R$15k",
+];
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+
 function fmt(val: number): string {
   if (!val) return "—";
   if (val >= 1e9) return `R$ ${(val / 1e9).toFixed(1).replace(".", ",")} bi`;
@@ -47,111 +65,267 @@ function fmt(val: number): string {
   return `R$ ${val.toFixed(0)}`;
 }
 
-function fmtN(val: number): string {
-  if (!val) return "—";
-  if (val >= 1e6) return `${(val / 1e6).toFixed(1).replace(".", ",")}M`;
-  if (val >= 1e3) return `${(val / 1e3).toFixed(0)}k`;
-  return val.toString();
+function stepToIndex(step: WizardStep): number {
+  const map: Record<string, number> = {
+    "0": -1, "1": 0, "1b": 1, "2": 2, "3": 3, "4": 4,
+    "5a": 5, "5b": 5, "5c": 5, "6": 6, "7": 7, "8": 8, "9": 9,
+  };
+  return map[String(step)] ?? -1;
 }
 
-function numBRL(s: string): number {
-  const n = parseFloat(String(s).replace(/[^\d.]/g, ""));
-  return isNaN(n) ? 0 : n;
+const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL || "#";
+
+// ─── PROGRESS DOTS ───────────────────────────────────────────────────────────
+
+function ProgressDots({ step }: { step: WizardStep }) {
+  const idx = stepToIndex(step);
+  if (idx < 0) return null;
+  return (
+    <div className="progress-dots">
+      {Array.from({ length: 10 }, (_, i) => (
+        <div
+          key={i}
+          className={`progress-dot${i === idx ? " active" : i < idx ? " done" : ""}`}
+        />
+      ))}
+    </div>
+  );
 }
 
-function getVisionario(score: number) {
-  return VISIONARIO_LABELS.find((v) => score >= v.min && score < v.max) || VISIONARIO_LABELS[0];
+// ─── SCORE CIRCLE SVG ────────────────────────────────────────────────────────
+
+function ScoreCircle({
+  score,
+  size,
+  variant,
+}: {
+  score: number;
+  size: number;
+  variant: "atual" | "visionario";
+}) {
+  const r = (size - 12) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (score / 100) * circumference;
+  return (
+    <div className="score-circle-wrap" style={{ width: size, height: size }}>
+      <svg className="score-circle-svg" width={size} height={size}>
+        <circle
+          className="score-circle-bg"
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+        />
+        <circle
+          className="score-circle-fill"
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+        />
+      </svg>
+      <div className="score-circle-num">{score}</div>
+    </div>
+  );
 }
 
-function calcScore(
-  result: DiagnosticoResult | null,
-  ambition: number,
-  risco: number,
-  urgencia: number,
-  investimento: number
-): number {
-  if (!result) return 0;
-  let s = 0;
-  const tam = result.tam_anual || 0;
-  if (tam > 1e9) s += 28;
-  else if (tam > 1e8) s += 20;
-  else if (tam > 1e7) s += 12;
-  else s += 4;
-  if (result.anos_experiencia >= 10) s += 18;
-  else if (result.anos_experiencia >= 5) s += 12;
-  else s += 5;
-  if (result.modelo_sugerido_nivel === "n3") s += 22;
-  else if (result.modelo_sugerido_nivel === "n2") s += 14;
-  else s += 6;
-  s += Math.round(ambition * 0.12);
-  s += Math.round(risco * 0.08);
-  s += Math.round(urgencia * 0.06);
-  s += Math.round(investimento * 0.06);
-  return Math.min(100, Math.round(s));
-}
 
-const SLIDER_GRAD = "linear-gradient(to right, #0D2B6B, #1565C0, #C9A84C, #FF6D00, #B71C1C)";
+// ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
-// ─── MAIN ─────────────────────────────────────────────────────────────────────
 export default function Calculator() {
-  const [step, setStep] = useState<Step>("form");
-  const [expanded, setExpanded] = useState(false);
-  const [form, setForm] = useState<FormData>({
-    mercado: "", pais: "Brasil", ticket: "", anos: "",
-    publico: "", problema: "", receita_atual: "", modelo_atual: "",
+  const [step, setStep] = useState<WizardStep>(0);
+  const [data, setData] = useState<WizardData>({
+    nome: "",
+    mercado: "",
+    bioImagem: null,
+    mercadoConfirmado: null,
+    dores: [],
+    doresCustom: "",
+    desejos: [],
+    desejosCustom: "",
+    whatsapp: "",
+    faturamento: "",
+    equipe: "",
+    anosExperiencia: "",
+    investimento: "",
   });
-  const [drillingStep, setDrillingStep] = useState(0);
-  const [result, setResult] = useState<DiagnosticoResult | null>(null);
+  const [diagnoseResult, setDiagnoseResult] = useState<DiagnoseResult | null>(null);
+  const [leadResult, setLeadResult] = useState<LeadResult | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [ambition, setAmbition] = useState(50);
-  const [risco, setRisco] = useState(50);
-  const [urgencia, setUrgencia] = useState(50);
-  const [investimento, setInvestimento] = useState(50);
-  const [shareOpen, setShareOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [drillingStep, setDrillingStep] = useState(0);
+  const [drillingDone, setDrillingDone] = useState(false);
+  const [counterVal, setCounterVal] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const apiDoneRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const set = (k: keyof FormData, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const set = useCallback(
+    (k: keyof WizardData, v: WizardData[keyof WizardData]) =>
+      setData((d) => ({ ...d, [k]: v })),
+    []
+  );
 
-  const handleSubmit = async () => {
-    if (!form.mercado.trim() || !form.ticket) {
-      setError("Preencha o mercado e o ticket para continuar.");
-      return;
-    }
+  const toggleArray = useCallback((key: "dores" | "desejos", item: string) => {
+    setData((d) => {
+      const arr = d[key] as string[];
+      return {
+        ...d,
+        [key]: arr.includes(item)
+          ? arr.filter((x) => x !== item)
+          : [...arr, item],
+      };
+    });
+  }, []);
+
+  const goTo = useCallback((s: WizardStep) => {
+    setStep(s);
     setError("");
-    setStep("drilling");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // ── STEP 1 → 1b: Confirm market ──
+  const handleConfirm = async () => {
+    if (!data.mercado.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mercado: data.mercado,
+          imagem: data.bioImagem,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro na API");
+      const result: ConfirmResult = await res.json();
+      set("mercadoConfirmado", result);
+      goTo("1b");
+    } catch {
+      setError("Erro ao analisar mercado. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ── STEP 4: Drilling + Diagnose API ──
+  const startDrilling = useCallback(async () => {
     setDrillingStep(0);
+    setDrillingDone(false);
+    setCounterVal(0);
+    apiDoneRef.current = false;
+
+    // Start animation
     let i = 0;
     intervalRef.current = setInterval(() => {
       i++;
       setDrillingStep(i);
-      if (i >= SONDA_STEPS.length - 1 && intervalRef.current) clearInterval(intervalRef.current);
-    }, 850);
+      if (i >= DRILL_STEPS.length - 1 && intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }, 2000);
 
+    // Start API call
     try {
       const res = await fetch("/api/diagnose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          nome: data.nome,
+          mercado: data.mercado,
+          mercadoConfirmado: data.mercadoConfirmado,
+          dores: [...data.dores, data.doresCustom].filter(Boolean),
+          desejos: [...data.desejos, data.desejosCustom].filter(Boolean),
+        }),
       });
       if (!res.ok) throw new Error("Erro na API");
-      const parsed: DiagnosticoResult = await res.json();
+      const result: DiagnoseResult = await res.json();
+      setDiagnoseResult(result);
+      apiDoneRef.current = true;
+
+      // Animate counter to real value
+      const target = result.scores.riqueza_total;
+      const duration = 2000;
+      const start = Date.now();
+      const counterInterval = setInterval(() => {
+        const elapsed = Date.now() - start;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCounterVal(Math.round(target * eased));
+        if (progress >= 1) clearInterval(counterInterval);
+      }, 30);
+    } catch {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      setTimeout(() => {
-        setResult(parsed);
-        setStep("result");
-      }, 500);
-    } catch (e: unknown) {
+      setError("Erro ao gerar diagnóstico. Tente novamente.");
+      goTo(3);
+    }
+  }, [data, goTo, set]);
+
+  // Check when both animation and API are done
+  useEffect(() => {
+    if (
+      step === 4 &&
+      drillingStep >= DRILL_STEPS.length - 1 &&
+      apiDoneRef.current &&
+      diagnoseResult
+    ) {
+      const timer = setTimeout(() => setDrillingDone(true), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [step, drillingStep, diagnoseResult]);
+
+  useEffect(() => {
+    if (step === 4) {
+      startDrilling();
+    }
+    return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      const msg = e instanceof Error ? e.message : "Tente novamente.";
-      setError("Erro: " + msg);
-      setStep("form");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step === 4]);
+
+  // ── STEP 6: Lead qualification ──
+  const handleLead = async () => {
+    if (!data.whatsapp.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: data.nome,
+          mercado: data.mercado,
+          whatsapp: data.whatsapp,
+          faturamento: data.faturamento,
+          equipe: data.equipe,
+          anosExperiencia: data.anosExperiencia,
+          investimento: data.investimento,
+          dores: data.dores,
+        }),
+      });
+      if (!res.ok) throw new Error("Erro na API");
+      const result: LeadResult = await res.json();
+      setLeadResult(result);
+      goTo(7);
+    } catch {
+      setError("Erro ao processar. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const score = calcScore(result, ambition, risco, urgencia, investimento);
-  const visionario = getVisionario(score);
-  const fatiaAtual = result ? Math.round(result.tam_anual * (ambition / 100) * 0.01) : 0;
+  // ── BIO IMAGE HANDLER ──
+  const handleBioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => set("bioImagem", reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  // ─── RENDER ────────────────────────────────────────────────────────────────
 
   return (
     <div className="wrap">
@@ -159,613 +333,674 @@ export default function Calculator() {
       <div className="glow-top" />
 
       <div className="card">
-        {/* TOP BANNER */}
-        <div className="top-banner">
-          <div className="banner-icon">🛢️</div>
-          <div className="banner-text">
-            <div className="banner-event">Visionários Day 2026</div>
-            <div className="banner-title">MÉTODO SONDA</div>
-            <div className="banner-by">Powered by Pedro Superti</div>
-          </div>
-        </div>
-
-        {/* HEADER */}
-        <div className="hdr">
-          <div className="hdr-mark">V</div>
-          <div>
-            <h1>CALCULADORA DE PETRÓLEO</h1>
-            <p>Canvas Visionário · Análise de Mercado com IA</p>
-          </div>
-        </div>
+        <ProgressDots step={step} />
 
         <div className="body">
-          {/* ── FORM ── */}
-          {step === "form" && (
-            <div>
+          {/* ════════ STEP 0: LANDING ════════ */}
+          {step === 0 && (
+            <div className="step-content">
+              <div className="landing-title">CALCULADORA DE RIQUEZA VISIONÁRIA</div>
+              <div className="landing-subtitle">
+                Descubra quanta riqueza está escondida no seu mercado — e como desbloquear em 90 dias
+              </div>
+
+              <div className="comparison-card">
+                <div className="comparison-col bloqueada">
+                  <div className="comparison-col-title">RIQUEZA BLOQUEADA</div>
+                  {[
+                    ["Faturamento", "R$15k/mês"],
+                    ["Margem", "22%"],
+                    ["Horas/semana", "55h"],
+                    ["Fontes de receita", "1"],
+                    ["Valuation", "R$0"],
+                  ].map(([l, v]) => (
+                    <div className="comparison-row" key={l}>
+                      <span className="comparison-label">{l}</span>
+                      <span className="comparison-val">{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="comparison-col desbloqueada">
+                  <div className="comparison-col-title">RIQUEZA DESBLOQUEADA</div>
+                  {[
+                    ["Faturamento", "R$85k/mês"],
+                    ["Margem", "61%"],
+                    ["Horas/semana", "25h"],
+                    ["Fontes de receita", "4"],
+                    ["Valuation", "R$2.4M"],
+                  ].map(([l, v]) => (
+                    <div className="comparison-row" key={l}>
+                      <span className="comparison-label">{l}</span>
+                      <span className="comparison-val">{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="time-badge">
+                Em 3 minutos, a IA vai mapear 3 oportunidades escondidas no seu mercado.
+              </div>
+
               <div className="f">
-                <label>Qual é o seu mercado / setor?</label>
+                <label>Qual é o seu primeiro nome?</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Pedro"
+                  value={data.nome}
+                  onChange={(e) => set("nome", e.target.value)}
+                />
+              </div>
+
+              <button
+                className="btn-drill"
+                disabled={!data.nome.trim()}
+                onClick={() => goTo(1)}
+              >
+                DESCOBRIR MINHA RIQUEZA ESCONDIDA
+              </button>
+
+              <div className="social-proof">Usado por mais de 30.000 visionários</div>
+            </div>
+          )}
+
+          {/* ════════ STEP 1: MARKET ════════ */}
+          {step === 1 && (
+            <div className="step-content">
+              <div className="step-title">Qual é o seu mercado?</div>
+              <div className="step-subtitle">
+                Descreva o que você faz e para quem. Quanto mais contexto, melhor a análise.
+              </div>
+
+              <div className="f">
                 <textarea
-                  rows={2}
-                  placeholder="Descreva com suas palavras. Ex: sou dentista especializado em implantes, tenho uma escola de inglês para adultos corporativos..."
-                  value={form.mercado}
+                  rows={3}
+                  placeholder="Descreva com suas palavras. Ex: sou dentista com clínica própria, sou arquiteta especializada em alto padrão..."
+                  value={data.mercado}
                   onChange={(e) => set("mercado", e.target.value)}
+                />
+                <div className="f-hint">Pode colar sua bio do Instagram ou site.</div>
+              </div>
+
+              <div className="bio-upload">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={handleBioUpload}
+                />
+                <button
+                  className="bio-upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  📎 Anexar print da bio (opcional)
+                </button>
+                {data.bioImagem && (
+                  <div className="bio-upload-preview">
+                    <img src={data.bioImagem} alt="Bio preview" />
+                    <button
+                      className="bio-upload-remove"
+                      onClick={() => set("bioImagem", null)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {error && <div className="err">{error}</div>}
+              <button
+                className="btn-drill"
+                disabled={!data.mercado.trim() || loading}
+                onClick={handleConfirm}
+              >
+                {loading ? (
+                  <>ANALISANDO<span className="loading-inline" /></>
+                ) : (
+                  "ANALISAR MERCADO"
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* ════════ STEP 1b: CONFIRM ════════ */}
+          {step === "1b" && data.mercadoConfirmado && (
+            <div className="step-content">
+              <div className="step-title">Encontramos seu mercado</div>
+              <div className="confirm-box">
+                <div className="confirm-sector">{data.mercadoConfirmado.setor_formatado}</div>
+                <div className="confirm-desc">{data.mercadoConfirmado.descricao}</div>
+                <div className="confirm-tam">
+                  Mercado estimado: {fmt(data.mercadoConfirmado.tam_estimado)}/ano
+                </div>
+                <div style={{ fontSize: 13, color: "rgba(226,221,212,.55)", marginTop: 12, fontStyle: "italic" }}>
+                  A maioria dos profissionais desse mercado acessa menos de 2% desse potencial.
+                </div>
+              </div>
+              <div className="confirm-btns">
+                <button className="btn-drill" onClick={() => goTo(2)}>
+                  ISSO MESMO!
+                </button>
+                <button className="btn-sec" onClick={() => goTo(1)}>
+                  QUERO REFORMULAR
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ════════ STEP 2: DORES ════════ */}
+          {step === 2 && (
+            <div className="step-content">
+              <div className="step-title">O que mais te trava hoje?</div>
+              <div className="step-subtitle">Selecione todas que se aplicam.</div>
+
+              <div className="option-grid">
+                {DORES_OPTIONS.map((opt) => (
+                  <div
+                    key={opt.id}
+                    className={`option-chip${data.dores.includes(opt.id) ? " selected" : ""}${opt.highlight ? " highlight" : ""}`}
+                    onClick={() => toggleArray("dores", opt.id)}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+
+              <div className="option-custom">
+                <div className="f" style={{ marginBottom: 8 }}>
+                  <textarea
+                    rows={2}
+                    placeholder="Ou descreva com suas palavras..."
+                    value={data.doresCustom}
+                    onChange={(e) => set("doresCustom", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                className="btn-drill"
+                disabled={data.dores.length === 0 && !data.doresCustom.trim()}
+                onClick={() => goTo(3)}
+              >
+                CONTINUAR
+              </button>
+            </div>
+          )}
+
+          {/* ════════ STEP 3: DESEJOS ════════ */}
+          {step === 3 && (
+            <div className="step-content">
+              <div className="step-title">O que você gostaria de enxergar?</div>
+              <div className="step-subtitle">Selecione todas que te interessam.</div>
+
+              <div className="option-grid">
+                {DESEJOS_OPTIONS.map((opt) => (
+                  <div
+                    key={opt.id}
+                    className={`option-chip${data.desejos.includes(opt.id) ? " selected" : ""}${opt.highlight ? " highlight" : ""}`}
+                    onClick={() => toggleArray("desejos", opt.id)}
+                  >
+                    {opt.label}
+                  </div>
+                ))}
+              </div>
+
+              <div className="option-custom">
+                <div className="f" style={{ marginBottom: 8 }}>
+                  <textarea
+                    rows={2}
+                    placeholder="Ou descreva com suas palavras..."
+                    value={data.desejosCustom}
+                    onChange={(e) => set("desejosCustom", e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                className="btn-drill"
+                disabled={data.desejos.length === 0 && !data.desejosCustom.trim()}
+                onClick={() => goTo(4)}
+              >
+                ANALISAR OPORTUNIDADES
+              </button>
+            </div>
+          )}
+
+          {/* ════════ STEP 4: DRILLING ════════ */}
+          {step === 4 && (
+            <div className="drilling">
+              <div className="d-icon">⛏️</div>
+              <div className="d-title">ANALISANDO SEU MERCADO</div>
+              <div>
+                {DRILL_STEPS.map((s, i) => (
+                  <div
+                    key={i}
+                    className={`d-step ${i < drillingStep ? "done" : i === drillingStep ? "active" : ""}`}
+                  >
+                    <div className="d-dot" />
+                    <span>{i < drillingStep ? "✓ " : ""}{s}</span>
+                    {i === 0 && i < drillingStep && data.mercadoConfirmado && (
+                      <span className="drill-result">
+                        Mercado: {data.mercadoConfirmado.setor_formatado}
+                      </span>
+                    )}
+                    {i === 1 && i < drillingStep && (
+                      <span className="drill-result">14 oportunidades encontradas</span>
+                    )}
+                    {i === 2 && i < drillingStep && counterVal > 0 && (
+                      <span className="drill-amount">{fmt(counterVal)} de riqueza descoberta!</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="pbar">
+                <div
+                  className="pfill"
+                  style={{
+                    width: `${Math.min(100, (drillingStep / (DRILL_STEPS.length - 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+
+              {drillingDone && (
+                <div className="drill-wow">
+                  <div className="drill-wow-text">
+                    Uau. Acho que você vai gostar do que encontramos.
+                  </div>
+                  <button className="btn-drill" onClick={() => goTo("5a")}>
+                    DESBLOQUEAR MINHA RIQUEZA
+                  </button>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ marginTop: 16 }}>
+                  <div className="err">{error}</div>
+                  <button className="btn-sec" style={{ marginTop: 8 }} onClick={() => goTo(3)}>
+                    Voltar e tentar novamente
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ════════ STEPS 5a/5b/5c: IDEAS ════════ */}
+          {(step === "5a" || step === "5b" || step === "5c") && diagnoseResult && (() => {
+            const idx = step === "5a" ? 0 : step === "5b" ? 1 : 2;
+            const idea = diagnoseResult.ideias[idx];
+            if (!idea) return null;
+            const num = idx + 1;
+            const nextStep: WizardStep = step === "5a" ? "5b" : step === "5b" ? "5c" : 6;
+            const nextLabel = step === "5a" ? "VER PRÓXIMA IDEIA" : step === "5b" ? "VER MINHA 3ª IDEIA" : "VER MEU PLANO DE AÇÃO";
+
+            return (
+              <div className="idea-screen step-content" key={step}>
+                <div className="idea-header">
+                  <div className="idea-badge">IDEIA #{num}</div>
+                  <div className={`idea-ia-badge ${idea.usa_ia ? "com-ia" : "sem-ia"}`}>
+                    {idea.usa_ia ? "COM IA" : "SEM IA"}
+                  </div>
+                </div>
+
+                <div className="idea-name">{idea.nome}</div>
+                <div className="idea-desc">{idea.descricao}</div>
+
+                <div className="idea-metrics">
+                  <div className="idea-metric">
+                    <div className="idea-metric-label">RIQUEZA DESBLOQUEADA</div>
+                    <div className="idea-metric-val gold">{fmt(idea.potencial_anual)}/ano</div>
+                  </div>
+                  <div className="idea-metric">
+                    <div className="idea-metric-label">TEMPO DE RETORNO</div>
+                    <div className="idea-metric-val">{idea.tempo_retorno_dias} dias</div>
+                  </div>
+                  <div className="idea-metric">
+                    <div className="idea-metric-label">CONCORRÊNCIA</div>
+                    <div className="idea-metric-val">{idea.concorrencia}</div>
+                  </div>
+                  <div className="idea-metric">
+                    <div className="idea-metric-label">DIFICULDADE</div>
+                    <div className="idea-metric-val">{idea.dificuldade}</div>
+                  </div>
+                </div>
+
+                <div className="idea-cuidados">
+                  <div className="idea-cuidados-label">CUIDADOS</div>
+                  <div className="idea-cuidados-text">{idea.cuidados}</div>
+                </div>
+
+                {idea.usa_ia && idea.como_usa_ia && (
+                  <div className="idea-ia-detail">
+                    <div className="idea-ia-detail-label">COMO A IA É USADA</div>
+                    <div className="idea-ia-detail-text">{idea.como_usa_ia}</div>
+                  </div>
+                )}
+
+                <button className="btn-drill" onClick={() => goTo(nextStep)}>
+                  {nextLabel}
+                </button>
+              </div>
+            );
+          })()}
+
+          {/* ════════ STEP 6: QUALIFICATION ════════ */}
+          {step === 6 && (
+            <div className="step-content qual-form">
+              <div className="step-title">Para montar seu plano personalizado, preciso de mais contexto.</div>
+              <div className="step-subtitle">Essas informações ajudam a IA a calibrar seu plano de 90 dias.</div>
+
+              <div className="f">
+                <label>WhatsApp</label>
+                <input
+                  type="tel"
+                  placeholder="11 99999-9999"
+                  value={data.whatsapp}
+                  onChange={(e) => set("whatsapp", e.target.value)}
                 />
               </div>
 
               <div className="row2 mb16">
                 <div className="f" style={{ marginBottom: 0 }}>
-                  <label>País / Região de atuação</label>
-                  <input type="text" placeholder="Ex: Brasil, Portugal, global..." value={form.pais} onChange={(e) => set("pais", e.target.value)} />
+                  <label>Faturamento mensal</label>
+                  <select
+                    value={data.faturamento}
+                    onChange={(e) => set("faturamento", e.target.value)}
+                  >
+                    <option value="">Selecione...</option>
+                    {FATURAMENTO_OPTIONS.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="f" style={{ marginBottom: 0 }}>
-                  <label>Ticket médio atual (R$/mês)</label>
-                  <input type="number" placeholder="Por cliente por mês" value={form.ticket} onChange={(e) => set("ticket", e.target.value)} />
+                  <label>Tamanho da equipe</label>
+                  <select
+                    value={data.equipe}
+                    onChange={(e) => set("equipe", e.target.value)}
+                  >
+                    <option value="">Selecione...</option>
+                    {EQUIPE_OPTIONS.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <button className="expand-btn" onClick={() => setExpanded((x) => !x)}>
-                {expanded ? "▲ Menos detalhes" : "▼ Adicionar mais contexto (opcional — melhora a análise)"}
-              </button>
+              <div className="row2 mb16">
+                <div className="f" style={{ marginBottom: 0 }}>
+                  <label>Anos de experiência</label>
+                  <input
+                    type="number"
+                    placeholder="Ex: 8"
+                    value={data.anosExperiencia}
+                    onChange={(e) => set("anosExperiencia", e.target.value)}
+                  />
+                </div>
+                <div className="f" style={{ marginBottom: 0 }}>
+                  <label>Investimento mensal</label>
+                  <select
+                    value={data.investimento}
+                    onChange={(e) => set("investimento", e.target.value)}
+                  >
+                    <option value="">Selecione...</option>
+                    {INVESTIMENTO_OPTIONS.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-              {expanded && (
+              {error && <div className="err">{error}</div>}
+              <button
+                className="btn-drill"
+                disabled={!data.whatsapp.trim() || loading}
+                onClick={handleLead}
+              >
+                {loading ? (
+                  <>GERANDO<span className="loading-inline" /></>
+                ) : (
+                  "GERAR MEU PLANO"
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* ════════ STEP 7: PLANO 90 DIAS ════════ */}
+          {step === 7 && diagnoseResult && (
+            <div className="step-content">
+              <div className="step-title">{data.nome}, seu plano de desbloqueio de 90 dias</div>
+
+              <div className="plano-intro">
+                Uma das maiores janelas de oportunidade no mercado de{" "}
+                {data.mercadoConfirmado?.setor_formatado || "seu setor"} agora:{" "}
+                {diagnoseResult.plano.janela_ia}
+              </div>
+
+              <div className="plano-roadmap">
+                <div className="plano-phase">
+                  <div className="plano-phase-label">SEMANAS 1–2</div>
+                  <div className="plano-phase-desc">{diagnoseResult.plano.semanas_1_2}</div>
+                </div>
+                <div className="plano-phase">
+                  <div className="plano-phase-label">SEMANAS 3–4</div>
+                  <div className="plano-phase-desc">{diagnoseResult.plano.semanas_3_4}</div>
+                </div>
+                <div className="plano-phase">
+                  <div className="plano-phase-label">MÊS 2</div>
+                  <div className="plano-phase-desc">{diagnoseResult.plano.mes_2}</div>
+                </div>
+                <div className="plano-phase">
+                  <div className="plano-phase-label">MÊS 3</div>
+                  <div className="plano-phase-desc">{diagnoseResult.plano.mes_3}</div>
+                </div>
+              </div>
+
+              <div className="plano-reality">
+                Esse plano exige cerca de {diagnoseResult.plano.horas_semana} horas por semana de dedicação.
+              </div>
+
+              <button className="btn-drill" onClick={() => goTo(8)}>
+                QUAL MEU PRÓXIMO PASSO?
+              </button>
+            </div>
+          )}
+
+          {/* ════════ STEP 8: DUAL SCORES ════════ */}
+          {step === 8 && diagnoseResult && (
+            <div className="step-content">
+              <div className="step-title">Seu diagnóstico completo</div>
+
+              <div className="scores-container">
+                <div className="score-block atual">
+                  <div className="score-block-label">SCORE ATUAL</div>
+                  <ScoreCircle score={diagnoseResult.scores.score_atual} size={100} variant="atual" />
+                  <div className="score-items">
+                    {diagnoseResult.scores.bloqueios.map((b, i) => (
+                      <div className="score-item" key={i}>{b}</div>
+                    ))}
+                  </div>
+                </div>
+                <div className="score-block visionario">
+                  <div className="score-block-label">SCORE VISIONÁRIO</div>
+                  <ScoreCircle score={diagnoseResult.scores.score_visionario} size={130} variant="visionario" />
+                  <div className="score-items">
+                    {diagnoseResult.scores.potenciais.map((p, i) => (
+                      <div className="score-item" key={i}>{p}</div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="riqueza-total-box">
+                <div className="riqueza-total-label">RIQUEZA TOTAL DESBLOQUEÁVEL</div>
+                <div className="riqueza-total-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
+                <div className="riqueza-total-sub">por ano · soma das 3 ideias</div>
+              </div>
+
+              {diagnoseResult.insight && (
+                <div className="insight">&ldquo;{diagnoseResult.insight}&rdquo;</div>
+              )}
+
+              <button className="btn-drill" onClick={() => goTo(9)}>
+                QUAL MEU PRÓXIMO PASSO?
+              </button>
+            </div>
+          )}
+
+          {/* ════════ STEP 9: FINAL ════════ */}
+          {step === 9 && diagnoseResult && (
+            <div className="elegivel-section step-content">
+              {/* Summary card - screenshottable */}
+              <div className="summary-card">
+                <div className="summary-header">
+                  <div>
+                    <div className="summary-name">{data.nome}</div>
+                    <div className="summary-sector">
+                      {data.mercadoConfirmado?.setor_formatado}
+                    </div>
+                  </div>
+                  <div className="summary-brand">Calculadora de Riqueza</div>
+                </div>
+
+                <div className="summary-ideas">
+                  {diagnoseResult.ideias.map((idea, i) => (
+                    <div className="summary-idea" key={i}>
+                      <span className="summary-idea-name">
+                        #{i + 1} {idea.nome}
+                      </span>
+                      <span className="summary-idea-val">
+                        {fmt(idea.potencial_anual)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="summary-scores">
+                  <div className="summary-score-item">
+                    <div className="summary-score-label">SCORE ATUAL</div>
+                    <div
+                      className="summary-score-val"
+                      style={{ color: "var(--orange)" }}
+                    >
+                      {diagnoseResult.scores.score_atual}
+                    </div>
+                  </div>
+                  <div className="summary-score-item">
+                    <div className="summary-score-label">SCORE VISIONÁRIO</div>
+                    <div
+                      className="summary-score-val"
+                      style={{ color: "var(--green)" }}
+                    >
+                      {diagnoseResult.scores.score_visionario}
+                    </div>
+                  </div>
+                  <div className="summary-score-item">
+                    <div className="summary-score-label">RIQUEZA TOTAL</div>
+                    <div
+                      className="summary-score-val"
+                      style={{ color: "#C9A84C" }}
+                    >
+                      {fmt(diagnoseResult.scores.riqueza_total)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="summary-footer">
+                  <div className="summary-footer-text">
+                    Análise por IA · @pedrosuperti
+                  </div>
+                  <div className="summary-footer-brand">PEDROSUPERTI.COM.BR</div>
+                </div>
+              </div>
+
+              {/* QUALIFIED PATH */}
+              {leadResult?.qualified && (
                 <>
-                  <div className="row2 mb16">
-                    <div className="f" style={{ marginBottom: 0 }}>
-                      <label>Anos de experiência no setor</label>
-                      <input type="number" placeholder="Ex: 12" value={form.anos} onChange={(e) => set("anos", e.target.value)} />
-                    </div>
-                    <div className="f" style={{ marginBottom: 0 }}>
-                      <label>Receita mensal atual (R$)</label>
-                      <input type="number" placeholder="Aproximada" value={form.receita_atual} onChange={(e) => set("receita_atual", e.target.value)} />
-                    </div>
+                  <div className="top-percent-text">
+                    Você está entre os top <strong>{leadResult.topPercent}%</strong> dos
+                    empreendedores que fizeram esse assessment.
                   </div>
-                  <div className="f">
-                    <label>Para quem você vende hoje?</label>
-                    <input type="text" placeholder="Ex: pequenas clínicas, dentistas solo, empresas com 50–200 funcionários..." value={form.publico} onChange={(e) => set("publico", e.target.value)} />
+
+                  <div className="elegivel-badge">STATUS: ELEGÍVEL</div>
+
+                  <div className="elegivel-desc">
+                    Seu perfil se qualifica para uma{" "}
+                    <strong>Sessão de Desbloqueio</strong> com um especialista da
+                    equipe Pedro Superti (valor: R$1.000). Vagas limitadas.
                   </div>
-                  <div className="f">
-                    <label>Qual problema principal você resolve?</label>
-                    <input type="text" placeholder="Ex: falta de padronização no atendimento, alto custo de conformidade..." value={form.problema} onChange={(e) => set("problema", e.target.value)} />
-                  </div>
-                  <div className="f">
-                    <label>Modelo de negócio atual</label>
-                    <input type="text" placeholder="Ex: consultoria por hora, curso online, serviço mensal recorrente..." value={form.modelo_atual} onChange={(e) => set("modelo_atual", e.target.value)} />
-                  </div>
+
+                  <a
+                    href={CALENDLY_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none", display: "block" }}
+                  >
+                    <button className="btn-gold">
+                      AGENDAR MINHA SESSÃO DE DESBLOQUEIO
+                    </button>
+                  </a>
+
+                  <button
+                    className="btn-sec"
+                    style={{ width: "100%", marginTop: 10 }}
+                    onClick={() => window.print()}
+                  >
+                    Salvar minha análise
+                  </button>
                 </>
               )}
 
-              {error && <div className="err">{error}</div>}
-              <button className="btn-drill" onClick={handleSubmit}>🔍 ANALISAR MINHAS CHANCES</button>
-            </div>
-          )}
-
-          {/* ── DRILLING ── */}
-          {step === "drilling" && (
-            <div className="drilling">
-              <div className="d-icon">⛏️</div>
-              <div className="d-title">PERFURANDO SEU MERCADO</div>
-              <div>
-                {SONDA_STEPS.map((s, i) => (
-                  <div key={i} className={`d-step ${i < drillingStep ? "done" : i === drillingStep ? "active" : ""}`}>
-                    <div className="d-dot" />
-                    {i < drillingStep ? "✓ " : ""}{s}
+              {/* NOT QUALIFIED PATH */}
+              {leadResult && !leadResult.qualified && (
+                <>
+                  <div className="nurture-tip">
+                    Comece pela{" "}
+                    <strong>
+                      Ideia #
+                      {(() => {
+                        const easiest = diagnoseResult.ideias.reduce(
+                          (best, idea, i) =>
+                            idea.dificuldade === "Facil" ||
+                            idea.tempo_retorno_dias <
+                              diagnoseResult.ideias[best].tempo_retorno_dias
+                              ? i
+                              : best,
+                          0
+                        );
+                        return easiest + 1;
+                      })()}
+                    </strong>
+                    . Você pode começar a implementar essa semana.
                   </div>
-                ))}
-              </div>
-              <div className="pbar">
-                <div className="pfill" style={{ width: `${Math.min(100, (drillingStep / (SONDA_STEPS.length - 1)) * 100)}%` }} />
-              </div>
-            </div>
-          )}
 
-          {/* ── RESULT ── */}
-          {step === "result" && result && (
-            <ResultView
-              result={result}
-              score={score}
-              visionario={visionario}
-              fatiaAtual={fatiaAtual}
-              ambition={ambition}
-              setAmbition={setAmbition}
-              risco={risco}
-              setRisco={setRisco}
-              urgencia={urgencia}
-              setUrgencia={setUrgencia}
-              investimento={investimento}
-              setInvestimento={setInvestimento}
-              ticket={form.ticket}
-              onReset={() => {
-                setStep("form");
-                setResult(null);
-                setAmbition(50);
-                setRisco(50);
-                setUrgencia(50);
-                setInvestimento(50);
-              }}
-              onShare={() => setShareOpen(true)}
-            />
-          )}
-        </div>
-      </div>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(
+                      "Quero receber o guia gratuito da Calculadora de Riqueza Visionária!"
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none", display: "block" }}
+                  >
+                    <button className="btn-drill" style={{ width: "100%" }}>
+                      RECEBER GUIA GRATUITO POR WHATSAPP
+                    </button>
+                  </a>
 
-      <div className="ftag">Pedro Superti · Visionários Day 2026</div>
-
-      {/* SHARE MODAL */}
-      {shareOpen && result && (
-        <ShareModal
-          result={result}
-          score={score}
-          visionario={visionario}
-          fatiaAtual={fatiaAtual}
-          copied={copied}
-          onCopy={() => {
-            const vis = getVisionario(score);
-            const activeTier = TIERS.find((t) => result.tam_anual >= t.min) || TIERS[3];
-            const text = `Acabei de mapear meu mercado com a Calculadora de Petróleo 🛢️\n\n📊 ${result.setor_formatado}\n💰 Mercado: ${fmt(result.tam_anual)}/ano\n🎯 Minha fatia: ${fmt(fatiaAtual)}/ano\n🏆 Nível: ${vis.label}\n🗺️ Classificação: ${activeTier.label}\n\n"${result.insight}"\n\n👉 Analise o seu também:\npedrosuperti.com.br | @pedrosuperti`;
-            navigator.clipboard.writeText(text).catch(() => {});
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-          }}
-          onClose={() => setShareOpen(false)}
-        />
-      )}
-    </div>
-  );
-}
-
-// ─── RESULT VIEW ──────────────────────────────────────────────────────────────
-interface ResultViewProps {
-  result: DiagnosticoResult;
-  score: number;
-  visionario: (typeof VISIONARIO_LABELS)[number];
-  fatiaAtual: number;
-  ambition: number;
-  setAmbition: (v: number) => void;
-  risco: number;
-  setRisco: (v: number) => void;
-  urgencia: number;
-  setUrgencia: (v: number) => void;
-  investimento: number;
-  setInvestimento: (v: number) => void;
-  ticket: string;
-  onReset: () => void;
-  onShare: () => void;
-}
-
-function ResultView({
-  result, score, visionario, fatiaAtual,
-  ambition, setAmbition, risco, setRisco,
-  urgencia, setUrgencia, investimento, setInvestimento,
-  ticket, onReset, onShare,
-}: ResultViewProps) {
-  const n1 = result.nivel_n1;
-  const n2 = result.nivel_n2;
-  const n3 = result.nivel_n3;
-  const chartData = [
-    { name: "MILÃO\n(N1)", val: n1?.potencial_anual || 0, color: NIVEL_COLORS.n1 },
-    { name: "MILHÃO\n(N2)", val: n2?.potencial_anual || 0, color: NIVEL_COLORS.n2 },
-    { name: "BILHÃO\n(N3)", val: n3?.potencial_anual || 0, color: NIVEL_COLORS.n3 },
-  ];
-
-  const activeTier = TIERS.find((t) => result.tam_anual >= t.min) || TIERS[3];
-
-  const sliders = [
-    {
-      label: "Ambição de mercado",
-      hint: ["Nicho pequeno", "Domínio total"],
-      val: ambition,
-      setVal: setAmbition,
-      desc: ambition < 33 ? "Fatia conservadora do mercado" : ambition < 66 ? "Fatia realista de ~0,5%" : "Aposta em dominar o mercado",
-    },
-    {
-      label: "Tolerância ao risco",
-      hint: ["Prefiro segurança", "Topo risco"],
-      val: risco,
-      setVal: setRisco,
-      desc: risco < 33 ? "Modelo previsível, crescimento lento" : risco < 66 ? "Equilíbrio risco / retorno" : "Disposto a arriscar por retorno maior",
-    },
-    {
-      label: "Urgência de resultado",
-      hint: ["Longo prazo", "Preciso já"],
-      val: urgencia,
-      setVal: setUrgencia,
-      desc: urgencia < 33 ? "Construção gradual, 3–5 anos" : urgencia < 66 ? "Tração em 12–24 meses" : "Resultado em menos de 6 meses",
-    },
-    {
-      label: "Capital disponível",
-      hint: ["Sem capital", "Tenho investimento"],
-      val: investimento,
-      setVal: setInvestimento,
-      desc: investimento < 33 ? "Bootstrap — começa pequeno" : investimento < 66 ? "Capital moderado disponível" : "Pronto para investir de forma agressiva",
-    },
-  ];
-
-  const perfil = (() => {
-    const a = ambition < 33 ? "com foco em nicho" : ambition < 66 ? "buscando uma fatia realista do mercado" : "com visão de domínio de mercado";
-    const r = risco < 33 ? "modelo conservador e previsível" : risco < 66 ? "equilíbrio entre segurança e crescimento" : "aposta em crescimento acelerado";
-    const u = urgencia < 33 ? "sem pressa para resultados" : urgencia < 66 ? "com foco em tração nos próximos 2 anos" : "com urgência para gerar resultado rápido";
-    const i = investimento < 33 ? "bootstrap e baixo custo inicial" : investimento < 66 ? "investimento moderado" : "capital disponível para escalar";
-    return `Você está entrando nesse mercado ${a}, com ${r}, ${u} e ${i}.`;
-  })();
-
-  const focoCors = ["#4FC3F7", "#FF8A65", "#C9A84C"];
-
-  return (
-    <div className="result">
-      {/* 1. MARKET LADDER */}
-      <div className="ladder-wrap mb20">
-        <div className="sec-title">SEU MERCADO NO MAPA</div>
-        {TIERS.map((t) => {
-          const isActive = t.key === activeTier.key;
-          return (
-            <div
-              key={t.key}
-              className={`ladder-row ${isActive ? "ladder-active" : ""}`}
-              style={{
-                borderColor: isActive ? t.color + "66" : "rgba(201,168,76,.07)",
-                background: isActive ? t.color + "0D" : "transparent",
-              }}
-            >
-              <div className="ladder-icon" style={{ opacity: isActive ? 1 : 0.35 }}>{t.icon}</div>
-              <div className="ladder-body">
-                <div className="ladder-name" style={{ color: isActive ? t.color : "rgba(226,221,212,.35)" }}>{t.label}</div>
-                <div className="ladder-desc" style={{ color: isActive ? "rgba(226,221,212,.7)" : "rgba(226,221,212,.25)" }}>
-                  {isActive ? t.desc : t.range}
-                </div>
-              </div>
-              <div className="ladder-range" style={{ color: isActive ? t.color : "rgba(226,221,212,.2)" }}>{t.range}</div>
-              {isActive && <div className="ladder-pin">◀ VOCÊ</div>}
-            </div>
-          );
-        })}
-        <div className="tam-big" style={{ marginTop: 12, marginBottom: 0 }}>
-          <div className="tam-label">Tamanho total — {result.pais_mercado}</div>
-          <div className="tam-val">{fmt(result.tam_anual)}</div>
-          <div className="tam-sub">por ano · {result.setor_formatado}</div>
-        </div>
-      </div>
-
-      {/* 2. INSIGHT */}
-      {result.insight && <div className="insight">&ldquo;{result.insight}&rdquo;</div>}
-
-      {/* 3. SCENARIO SLIDERS */}
-      <div className="amb-box mb20">
-        <div className="amb-header">
-          <span className="amb-label">Ajuste seu cenário</span>
-          <span className="amb-hint">Mova os sliders — os resultados mudam em tempo real</span>
-        </div>
-        {sliders.map(({ label, hint, val, setVal, desc }) => (
-          <div key={label} className="slider-row">
-            <div className="slider-header">
-              <span className="slider-label">{label}</span>
-              <span className="slider-desc">{desc}</span>
-            </div>
-            <input
-              type="range"
-              min="1"
-              max="100"
-              value={val}
-              onChange={(e) => setVal(Number(e.target.value))}
-              style={{ background: SLIDER_GRAD }}
-            />
-            <div className="slider-hints">
-              <span>{hint[0]}</span>
-              <span>{hint[1]}</span>
-            </div>
-          </div>
-        ))}
-        <div className="perfil-box">
-          <div className="perfil-label">🧭 Seu perfil de entrada</div>
-          <div className="perfil-text">{perfil}</div>
-        </div>
-        <div className="amb-results" style={{ marginTop: 14 }}>
-          <div className="amb-metric">
-            <div className="amb-metric-label">Seu reservatório</div>
-            <div className="amb-metric-val" style={{ color: "#C9A84C" }}>{fmt(fatiaAtual)}</div>
-          </div>
-          <div className="amb-metric">
-            <div className="amb-metric-label">Clientes para R$1M/ano</div>
-            <div className="amb-metric-val">
-              {numBRL(ticket) > 0 ? Math.ceil(1000000 / (numBRL(ticket) * 12)) : "—"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. N1/N2/N3 CHART */}
-      <div className="chart-wrap mb20">
-        <div className="sec-title">OS 3 HORIZONTES — N1 · N2 · N3</div>
-        <div className="chart-inner">
-          <ResponsiveContainer width="100%" height={150}>
-            <BarChart data={chartData} barSize={36} margin={{ top: 8, right: 8, left: 0, bottom: 4 }}>
-              <XAxis
-                dataKey="name"
-                tick={{ fill: "rgba(226,221,212,.5)", fontSize: 11, fontFamily: "Bebas Neue" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis hide scale="log" domain={["auto", "auto"]} />
-              <Tooltip
-                cursor={{ fill: "rgba(201,168,76,.05)" }}
-                contentStyle={{
-                  background: "#0E1521",
-                  border: "1px solid rgba(201,168,76,.2)",
-                  borderRadius: 0,
-                  fontFamily: "Outfit",
-                  fontSize: 12,
-                }}
-                formatter={(v) => [fmt(Number(v)), "Potencial anual"]}
-              />
-              <Bar dataKey="val" radius={0} minPointSize={8}>
-                {chartData.map((d, i) => (
-                  <Cell key={i} fill={d.color} opacity={0.85} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="nivel-cards-wrap">
-          <div className="nivel-cards">
-            {[
-              { nivel: "N1", data: n1, color: NIVEL_COLORS.n1, label: "MILÃO" },
-              { nivel: "N2", data: n2, color: NIVEL_COLORS.n2, label: "MILHÃO" },
-              { nivel: "N3", data: n3, color: NIVEL_COLORS.n3, label: "BILHÃO" },
-            ].map(
-              ({ nivel, data, color, label }) =>
-                data && (
-                  <div className="nivel-card" key={nivel} style={{ borderTopColor: color }}>
-                    <div className="nc-label" style={{ color }}>{nivel} · {label}</div>
-                    <div className="nc-pot" style={{ color }}>{fmt(data.potencial_anual)}</div>
-                    <div className="nc-desc">{data.descricao}</div>
-                    <div className="nc-ex">Ex: {data.exemplo_empresa}</div>
-                  </div>
-                )
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 5. N3 INSIGHT */}
-      {result.insight_n3 && (
-        <div className="n3-box mb20">
-          <div className="n3-label">🔭 O que esse mercado vai precisar (N3)</div>
-          <div className="n3-text">{result.insight_n3}</div>
-        </div>
-      )}
-
-      {/* 6. MODELOS ALTERNATIVOS */}
-      {result.modelos_alternativos?.length > 0 && (
-        <div className="mb20">
-          <div className="sec-title">E SE VOCÊ PENSASSE MAIOR? OUTROS MODELOS</div>
-          <div className="alt-cards">
-            {result.modelos_alternativos.map((m, i) => (
-              <div className="alt-card" key={i}>
-                <div className="alt-card-top">
-                  <div className="alt-tag">{m.modelo}</div>
-                  <div className="alt-val">{fmt(m.potencial_anual)}</div>
-                </div>
-                <div className="alt-desc">{m.descricao}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 7. DADOS DO MERCADO */}
-      <div className="mb20">
-        <div className="sec-title">DADOS DO MERCADO</div>
-        <div className="data-box">
-          <div className="drow">
-            <span className="drow-l">Profissionais / operadores</span>
-            <span className="drow-r">{fmtN(result.profissionais_total)}</span>
-          </div>
-          <div className="drow">
-            <span className="drow-l">Empresas / unidades</span>
-            <span className="drow-r">{fmtN(result.empresas_total)}</span>
-          </div>
-          <div className="drow">
-            <span className="drow-l">Ticket ideal sugerido</span>
-            <span className="drow-r" style={{ color: "#C9A84C" }}>
-              R${result.ticket_sugerido_min?.toLocaleString("pt-BR")} – R${result.ticket_sugerido_max?.toLocaleString("pt-BR")}/mês
-            </span>
-          </div>
-          {result.concentracao_regiao && (
-            <div className="drow">
-              <span className="drow-l">Concentração regional</span>
-              <span className="drow-r">{result.concentracao_regiao}</span>
-            </div>
-          )}
-          {result.benchmark_mundial && (
-            <div className="drow">
-              <span className="drow-l">Benchmark mundial</span>
-              <span className="drow-r">{result.benchmark_mundial}</span>
+                  <button
+                    className="btn-sec"
+                    style={{ width: "100%", marginTop: 10 }}
+                    onClick={() => window.print()}
+                  >
+                    Salvar minha análise
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
       </div>
 
-      {/* 8. IA MUDA TUDO */}
-      {result.ia_muda_tudo && (
-        <div className="ia-box mb20">
-          <div className="ia-header">
-            <span className="ia-icon">⚡</span>
-            <span className="ia-title">O que a IA muda nesse mercado</span>
-          </div>
-          <div className="ia-row">
-            <div className="ia-col ia-antes">
-              <div className="ia-col-label">🔒 Antes da IA</div>
-              <div className="ia-col-text">{result.ia_muda_tudo.antes}</div>
-            </div>
-            <div className="ia-arrow">→</div>
-            <div className="ia-col ia-depois">
-              <div className="ia-col-label">🚀 Agora é possível</div>
-              <div className="ia-col-text">{result.ia_muda_tudo.depois}</div>
-            </div>
-          </div>
-          <div className="ia-janela">
-            <span className="ia-janela-icon">⏳</span>
-            <span>{result.ia_muda_tudo.janela}</span>
-          </div>
-        </div>
-      )}
-
-      {/* 9. SUGESTÕES DE FOCO */}
-      {result.sugestoes_foco?.length > 0 && (
-        <div className="mb20">
-          <div className="sec-title">E SE VOCÊ FOCASSE DIFERENTE?</div>
-          <div className="foco-cards">
-            {result.sugestoes_foco.map((s, i) => {
-              const cor = focoCors[i % focoCors.length];
-              return (
-                <div className="foco-card" key={i} style={{ borderLeftColor: cor }}>
-                  <div className="foco-tipo" style={{ color: cor }}>{s.tipo}</div>
-                  <div className="foco-sugestao">{s.sugestao}</div>
-                  <div className="foco-bottom">
-                    <div className="foco-motivo">{s.motivo}</div>
-                    <div className="foco-pot" style={{ color: cor }}>{fmt(s.potencial_anual)}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 10. CONSELHO VISIONÁRIO */}
-      {result.conselho_visionario && (
-        <div className="conselho-box mb20">
-          <div className="conselho-header">
-            <span className="conselho-icon">🧭</span>
-            <span className="conselho-label">Conselho Visionário</span>
-          </div>
-          <div className="conselho-text">{result.conselho_visionario}</div>
-          <div className="conselho-footer">Faça isso nos próximos 7 dias.</div>
-        </div>
-      )}
-
-      {/* 11. NÍVEL VISIONÁRIO */}
-      <div className="vis-box" style={{ borderColor: visionario.color + "55", background: visionario.color + "08" }}>
-        <div className="vis-label" style={{ color: visionario.color }}>Seu Potencial Nível Visionário</div>
-        <div className="vis-score" style={{ color: visionario.color }}>{score}</div>
-        <div className="vis-title" style={{ color: visionario.color }}>{visionario.label}</div>
-        <div className="vis-desc">{visionario.desc}</div>
-        <div className="score-bar">
-          <div className="score-fill" style={{ width: `${score}%`, background: visionario.color, color: visionario.color }} />
-        </div>
-      </div>
-
-      {/* 12. BUTTONS */}
-      <div className="btn-row">
-        <button className="btn-sec" onClick={onReset}>← Novo cálculo</button>
-        <button className="btn-pri" onClick={onShare}>🚀 Compartilhar minha análise</button>
-      </div>
-    </div>
-  );
-}
-
-// ─── SHARE MODAL ──────────────────────────────────────────────────────────────
-interface ShareModalProps {
-  result: DiagnosticoResult;
-  score: number;
-  visionario: (typeof VISIONARIO_LABELS)[number];
-  fatiaAtual: number;
-  copied: boolean;
-  onCopy: () => void;
-  onClose: () => void;
-}
-
-function ShareModal({ result, score, visionario, fatiaAtual, copied, onCopy, onClose }: ShareModalProps) {
-  const activeTier = TIERS.find((t) => result.tam_anual >= t.min) || TIERS[3];
-  const vis = visionario;
-
-  return (
-    <div className="modal-bg" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: 400, padding: 0, overflow: "hidden" }} onClick={(e) => e.stopPropagation()}>
-        {/* Story card */}
-        <div style={{
-          background: "linear-gradient(160deg,#060A10 0%,#0D1520 60%,#060A10 100%)",
-          padding: "28px 24px 20px",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, background: `radial-gradient(circle,${activeTier.color}22 0%,transparent 70%)`, pointerEvents: "none" }} />
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-            <div>
-              <div style={{ fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: "rgba(201,168,76,.5)", marginBottom: 4 }}>Canvas Visionário</div>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 11, letterSpacing: 2, color: "rgba(226,221,212,.4)" }}>Visionários Day 2026 · @pedrosuperti</div>
-            </div>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 32, lineHeight: 1 }}>{activeTier.icon}</div>
-          </div>
-
-          <div style={{ fontFamily: "'Bebas Neue'", fontSize: 28, letterSpacing: 2, color: "#E2DDD4", lineHeight: 1.1, marginBottom: 6 }}>{result.setor_formatado}</div>
-          <div style={{ fontSize: 11, color: "rgba(226,221,212,.35)", marginBottom: 20, letterSpacing: 1 }}>{result.pais_mercado}</div>
-
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            background: activeTier.bg, border: `1px solid ${activeTier.color}55`,
-            padding: "8px 16px", marginBottom: 20,
-          }}>
-            <span style={{ fontFamily: "'Bebas Neue'", fontSize: 22, letterSpacing: 3, color: activeTier.color }}>{activeTier.label}</span>
-            <span style={{ fontSize: 11, color: activeTier.color, opacity: 0.7, letterSpacing: 1 }}>/ {activeTier.range}</span>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-            <div style={{ background: "rgba(255,255,255,.04)", padding: "12px 14px", borderTop: `2px solid ${activeTier.color}` }}>
-              <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "rgba(201,168,76,.5)", marginBottom: 5 }}>Mercado total</div>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: "#C9A84C", letterSpacing: 1 }}>{fmt(result.tam_anual)}</div>
-            </div>
-            <div style={{ background: "rgba(255,255,255,.04)", padding: "12px 14px", borderTop: `2px solid ${vis.color}` }}>
-              <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "rgba(201,168,76,.5)", marginBottom: 5 }}>Minha fatia</div>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: vis.color, letterSpacing: 1 }}>{fmt(fatiaAtual)}</div>
-            </div>
-          </div>
-
-          {result.insight && (
-            <div style={{ borderLeft: `3px solid ${activeTier.color}`, paddingLeft: 14, marginBottom: 16, fontSize: 13, color: "rgba(226,221,212,.75)", fontStyle: "italic", lineHeight: 1.6 }}>
-              &ldquo;{result.insight}&rdquo;
-            </div>
-          )}
-
-          {result.ia_muda_tudo?.depois && (
-            <div style={{ background: "rgba(255,255,255,.04)", borderLeft: "3px solid #00E5FF", padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "rgba(226,221,212,.7)", lineHeight: 1.5 }}>
-              <span style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(0,229,255,.6)", display: "block", marginBottom: 4 }}>⚡ Com IA</span>
-              {result.ia_muda_tudo.depois}
-            </div>
-          )}
-
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 4, height: 36, background: vis.color }} />
-              <div>
-                <div style={{ fontSize: 9, letterSpacing: 2, textTransform: "uppercase", color: "rgba(226,221,212,.35)" }}>Nível Visionário</div>
-                <div style={{ fontFamily: "'Bebas Neue'", fontSize: 22, color: vis.color, letterSpacing: 2, lineHeight: 1 }}>{vis.label}</div>
-              </div>
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontFamily: "'Bebas Neue'", fontSize: 40, color: vis.color, lineHeight: 1, opacity: 0.9 }}>{score}</div>
-              <div style={{ fontSize: 9, letterSpacing: 1, color: "rgba(226,221,212,.25)" }}>/100</div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(201,168,76,.1)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontSize: 10, color: "rgba(226,221,212,.3)", letterSpacing: 1 }}>Analise o seu mercado</div>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 13, color: "rgba(201,168,76,.6)", letterSpacing: 2 }}>PEDROSUPERTI.COM.BR</div>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div style={{ padding: "16px 20px", background: "#080E17", borderTop: "1px solid rgba(201,168,76,.12)" }}>
-          <div style={{ fontSize: 11, color: "rgba(226,221,212,.3)", marginBottom: 12, textAlign: "center" }}>📱 Tire um print do card acima para postar</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <button className="copy-btn" style={{ fontSize: 12, padding: "11px 8px" }} onClick={onCopy}>
-              {copied ? "✓ COPIADO!" : "COPIAR LEGENDA"}
-            </button>
-            <button className="close-btn" style={{ fontSize: 12 }} onClick={onClose}>Fechar</button>
-          </div>
-        </div>
-      </div>
+      <div className="ftag">Pedro Superti · Calculadora de Riqueza Visionária</div>
     </div>
   );
 }
