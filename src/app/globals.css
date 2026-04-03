@@ -607,3 +607,70 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .nurture-plano-item strong{color:rgba(201,168,76,.85)}
 .nurture-upgrade{font-size:14px;color:rgba(226,221,212,.5);text-align:center;margin-top:20px;line-height:1.6}
 .nurture-upgrade a{color:#C9A84C;text-decoration:underline;display:block;margin-top:6px}
+
+/* ═══ ADMIN DASHBOARD ═══ */
+.admin-login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.admin-login-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.15);padding:40px;max-width:360px;width:100%;text-align:center}
+.admin-login-card h1{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#C9A84C;letter-spacing:2px;margin-bottom:4px}
+.admin-login-card p{font-size:13px;color:rgba(226,221,212,.4);margin-bottom:24px}
+.admin-login-card input{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.14);padding:14px;color:#E2DDD4;font-size:16px;margin-bottom:12px;outline:none}
+.admin-login-card input:focus{border-color:rgba(201,168,76,.4)}
+.admin-login-card button{width:100%;padding:14px;background:#C9A84C;color:#07090F;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;border:none;cursor:pointer}
+
+.admin-wrap{max-width:900px;margin:0 auto;padding:20px}
+.admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.admin-header h1{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#C9A84C;letter-spacing:2px}
+.admin-refresh{padding:8px 16px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-size:13px;cursor:pointer}
+.admin-refresh:disabled{opacity:.5}
+
+.admin-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+@media(max-width:600px){.admin-stats{grid-template-columns:repeat(3,1fr)}}
+.admin-stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:14px;text-align:center}
+.admin-stat-num{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E2DDD4}
+.admin-stat-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(226,221,212,.4)}
+.admin-stat.hot .admin-stat-num{color:var(--green)}
+.admin-stat.warm .admin-stat-num{color:#C9A84C}
+.admin-stat.cold .admin-stat-num{color:var(--orange)}
+.admin-stat.applied .admin-stat-num{color:#00E5FF}
+
+.admin-filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.admin-filter-btn{padding:8px 16px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(226,221,212,.5);font-size:13px;cursor:pointer;letter-spacing:1px}
+.admin-filter-btn.active{border-color:rgba(201,168,76,.4);color:#C9A84C;background:rgba(201,168,76,.06)}
+
+.admin-leads{display:flex;flex-direction:column;gap:8px}
+.admin-empty{text-align:center;padding:40px;color:rgba(226,221,212,.3)}
+.admin-lead-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);padding:14px 16px;cursor:pointer;transition:border-color .2s}
+.admin-lead-card:hover{border-color:rgba(201,168,76,.3)}
+.admin-lead-card.hot{border-left:3px solid var(--green)}
+.admin-lead-card.warm{border-left:3px solid #C9A84C}
+.admin-lead-card.cold{border-left:3px solid var(--orange)}
+
+.admin-lead-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.admin-lead-name{font-size:16px;font-weight:600;color:#E2DDD4}
+.admin-lead-tier{font-size:11px;letter-spacing:2px;padding:3px 10px;font-weight:700}
+.admin-lead-tier.hot{background:rgba(34,197,94,.1);color:var(--green)}
+.admin-lead-tier.warm{background:rgba(201,168,76,.1);color:#C9A84C}
+.admin-lead-tier.cold{background:rgba(239,68,68,.1);color:var(--orange)}
+
+.admin-lead-meta{font-size:13px;color:rgba(226,221,212,.45);display:flex;gap:12px;margin-bottom:6px}
+.admin-lead-bottom{display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(226,221,212,.35);flex-wrap:wrap}
+.admin-lead-score{font-weight:600;color:rgba(201,168,76,.7)}
+.admin-lead-badge{background:rgba(0,229,255,.1);color:#00E5FF;padding:2px 8px;font-size:10px;letter-spacing:1px;font-weight:700}
+.admin-lead-phone{color:rgba(226,221,212,.4)}
+.admin-lead-date{margin-left:auto}
+
+.admin-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.admin-modal{background:#0D1117;border:1px solid rgba(201,168,76,.2);max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:28px;position:relative}
+.admin-modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:rgba(226,221,212,.4);font-size:20px;cursor:pointer}
+.admin-modal h2{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#C9A84C;letter-spacing:1px;margin-bottom:8px}
+.admin-modal .admin-lead-tier{display:inline-block;margin-bottom:20px}
+
+.admin-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.admin-detail-item{display:flex;flex-direction:column;gap:2px}
+.admin-detail-item.full{grid-column:1 / -1}
+.admin-detail-item label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,.6)}
+.admin-detail-item span,.admin-detail-item a{font-size:14px;color:#E2DDD4;word-break:break-all}
+.admin-detail-item a{color:#00E5FF;text-decoration:none}
+.admin-detail-item a:hover{text-decoration:underline}
+
+.admin-whatsapp-btn{display:block;width:100%;padding:14px;background:#25D366;color:#fff;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;text-decoration:none}
