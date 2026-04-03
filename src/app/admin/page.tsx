@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, FunnelChart, Funnel, LabelList,
@@ -253,8 +253,6 @@ export default function AdminDashboard() {
   const [filter, setFilter] = useState<"all" | "hot" | "warm" | "cold">("all");
   const [sort, setSort] = useState<SortKey>("date");
   const [search, setSearch] = useState("");
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [modalTab, setModalTab] = useState<"perfil" | "aplicacao">("perfil");
   const [insights, setInsights] = useState<Record<string, unknown> | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
 
@@ -321,7 +319,7 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [authed, fetchLeads]);
 
-  const [page, setPage] = useState<"home" | "leads" | "lead-detail" | "analytics-leads" | "analytics-calc">("home");
+  const [page, setPage] = useState<"home" | "leads" | "lead-detail" | "analytics-leads" | "analytics-calc" | "sync">("home");
   const [sideOpen, setSideOpen] = useState(false);
   const [calcEvents, setCalcEvents] = useState<CalcEvent[]>([]);
   const [detailLeadId, setDetailLeadId] = useState<number | null>(null);
@@ -722,9 +720,6 @@ export default function AdminDashboard() {
     setLeads((prev) =>
       prev.map((l) => (l.id === id ? { ...l, ...data } : l))
     );
-    if (selectedLead?.id === id) {
-      setSelectedLead((prev) => prev ? { ...prev, ...data } : prev);
-    }
   };
 
   // ─── LOGIN ────────────────────────────────────────────────────────────────
@@ -773,7 +768,7 @@ export default function AdminDashboard() {
         </nav>
         <div className="adm-side-actions">
           <a href="/api/admin/leads/export" className="adm-nav" download>Exportar CSV</a>
-          <a href="/admin/sync" className="adm-nav">Sync Forms.app</a>
+          <button className={`adm-nav${page === "sync" ? " active" : ""}`} onClick={() => { setPage("sync"); setSideOpen(false); }}>Sync Forms.app</button>
           <button className="adm-nav" onClick={fetchLeads} disabled={loading}>{loading ? "..." : "Atualizar"}</button>
         </div>
         <div className="adm-side-foot">
@@ -890,7 +885,7 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="adm-mini-list">
                     {needsAttention.map((l) => (
-                      <div key={l.id} className="adm-mini-card" onClick={() => { setSelectedLead(l); setModalTab("perfil"); setInsights(null); }}>
+                      <div key={l.id} className="adm-mini-card" onClick={() => { setDetailLeadId(l.id); setInsights(null); setPage("lead-detail"); }}>
                         <div className="adm-mini-card-score" style={{ borderColor: TIER_COLORS[(l.tier || "cold") as keyof typeof TIER_COLORS] }}>{l.internal_score || 0}</div>
                         <div className="adm-mini-card-info">
                           <span className="adm-mini-card-name">{l.nome || "Sem nome"}</span>
@@ -908,24 +903,23 @@ export default function AdminDashboard() {
             <div className="adm-section-title">LEADS RECENTES</div>
             <div className="adm-list">
               {recentLeads.map((lead) => (
-                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setSelectedLead(lead); setModalTab("perfil"); setInsights(null); }}>
-                  <div className="adm-card-left">
-                    <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
-                  </div>
-                  <div className="adm-card-center">
-                    <div className="adm-card-top">
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setDetailLeadId(lead.id); setInsights(null); setPage("lead-detail"); }}>
+                  <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
+                  <div className="adm-card-body">
+                    <div className="adm-card-row1">
                       <span className="adm-card-name">{lead.nome || "Sem nome"}</span>
                       <span className={`adm-card-tier ${lead.tier || "cold"}`}>{(lead.tier || "cold").toUpperCase()}</span>
                       {lead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
-                      <TagBadges lead={lead} />
                     </div>
-                    <div className="adm-card-meta">
-                      <span>{(lead.mercado || "—").slice(0, 45)}</span>
+                    <div className="adm-card-tags"><TagBadges lead={lead} /></div>
+                    <div className="adm-card-row2">
+                      <span>{(lead.mercado || "—").slice(0, 40)}</span>
+                      <span className="adm-card-dot">&middot;</span>
                       <span>{lead.faturamento || ""}</span>
-                      <span>{lead.whatsapp}</span>
+                      <span className="adm-card-dot">&middot;</span>
+                      <span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span>
                     </div>
                   </div>
-                  <div className="adm-card-right"><span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span></div>
                 </div>
               ))}
               <button className="adm-view-all" onClick={() => setPage("leads")}>VER TODOS OS LEADS</button>
@@ -1286,26 +1280,25 @@ export default function AdminDashboard() {
               {filtered.length === 0 && <div className="adm-empty">{loading ? "Carregando..." : "Nenhum lead encontrado."}</div>}
               {filtered.map((lead) => (
                 <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setDetailLeadId(lead.id); setInsights(null); setPage("lead-detail"); }}>
-                  <div className="adm-card-left">
-                    <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
-                  </div>
-                  <div className="adm-card-center">
-                    <div className="adm-card-top">
+                  <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
+                  <div className="adm-card-body">
+                    <div className="adm-card-row1">
                       <span className="adm-card-name">{lead.nome || "Sem nome"}</span>
                       <span className={`adm-card-tier ${lead.tier || "cold"}`}>{(lead.tier || "cold").toUpperCase()}</span>
                       {lead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
                       {lead.contact_status && lead.contact_status !== "novo" && (
                         <span className="adm-card-status" style={{ color: CONTACT_COLORS[lead.contact_status] }}>{CONTACT_LABELS[lead.contact_status]}</span>
                       )}
-                      <TagBadges lead={lead} />
                     </div>
-                    <div className="adm-card-meta">
-                      <span>{(lead.mercado || "—").slice(0, 45)}</span>
+                    <div className="adm-card-tags"><TagBadges lead={lead} /></div>
+                    <div className="adm-card-row2">
+                      <span>{(lead.mercado || "—").slice(0, 40)}</span>
+                      <span className="adm-card-dot">&middot;</span>
                       <span>{lead.faturamento || ""}</span>
-                      <span>{lead.whatsapp}</span>
+                      <span className="adm-card-dot">&middot;</span>
+                      <span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span>
                     </div>
                   </div>
-                  <div className="adm-card-right"><span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span></div>
                 </div>
               ))}
             </div>
@@ -1532,287 +1525,363 @@ export default function AdminDashboard() {
           );
         })()}
 
+        {/* ═══ SYNC PAGE ═══ */}
+        {page === "sync" && <SyncSection />}
+
       </main>
+    </div>
+  );
+}
 
-      {/* ═══ DETAIL MODAL ═══ */}
-      {selectedLead && (
-        <div className="adm-overlay" onClick={() => { setSelectedLead(null); setInsights(null); }}>
-          <div className="adm-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="adm-modal-x" onClick={() => { setSelectedLead(null); setInsights(null); }}>✕</button>
+// ─── SYNC SECTION (inline) ──────────────────────────────────────────────────
 
-            {/* Header */}
-            <div className="adm-modal-header">
-              <div className="adm-modal-score" style={{ borderColor: TIER_COLORS[(selectedLead.tier || "warm") as keyof typeof TIER_COLORS] }}>
-                {selectedLead.internal_score || 0}
-              </div>
-              <div>
-                <h2>{selectedLead.nome || "Lead"}</h2>
-                <div className="adm-modal-badges">
-                  <span className={`adm-card-tier ${selectedLead.tier}`}>{(selectedLead.tier || "warm").toUpperCase()}</span>
-                  {selectedLead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
-                  <TagBadges lead={selectedLead} />
-                  <span className="adm-modal-time">{selectedLead.created_at ? timeAgo(selectedLead.created_at) : ""} atrás</span>
-                </div>
-              </div>
-            </div>
+const FORMSAPP_FIELDS = [
+  "Nome Completo", "Principal E-mail", "Telefone", "Nome de sua empresa",
+  "Quantos Funcionários", "Faturamento mensal", "Seu site", "Instagram",
+  "Ramo de atuação", "Problemas ou desafios", "Urgência", "Marketing",
+  "Fator X", "Inteligência Artificial", "Algo importante",
+];
 
-            {/* Score bar */}
-            <div className="adm-scorebar">
-              <div className="adm-scorebar-fill" style={{ width: `${Math.min(selectedLead.internal_score || 0, 100)}%`, background: TIER_COLORS[(selectedLead.tier || "warm") as keyof typeof TIER_COLORS] }} />
-              <div className="adm-scorebar-marks">
-                <span style={{ left: "40%" }}>40</span>
-                <span style={{ left: "70%" }}>70</span>
-              </div>
-            </div>
+const KNOWN_LABELS = [
+  "nome completo", "principal e-mail", "telefone", "nome de sua empresa",
+  "quantos funcionários", "quantos funcionarios", "qual é faturamento", "qual e faturamento",
+  "faturamento mensal", "seu site", "instagram", "ramo de atuação", "ramo de atuacao",
+  "problemas ou desafios", "nível de urgência", "nivel de urgencia",
+  "como você faz o marketing", "como voce faz o marketing", "marketing",
+  "fator x", "inteligência artificial", "inteligencia artificial",
+  "algo importante", "data de envio", "id de envio",
+];
 
-            <button className="adm-modal-ficha-link" onClick={() => { setDetailLeadId(selectedLead.id); setSelectedLead(null); setPage("lead-detail"); }}>
-              Abrir ficha completa →
-            </button>
+function isKnownLabel(line: string): boolean {
+  const lower = line.toLowerCase().replace(/:$/, "").trim();
+  return KNOWN_LABELS.some((l) => lower.includes(l));
+}
 
-            {/* Tabs */}
-            <div className="adm-modal-tabs">
-              <button className={`adm-modal-tab${modalTab === "perfil" ? " active" : ""}`} onClick={() => setModalTab("perfil")}>
-                📊 Perfil
-              </button>
-              <button
-                className={`adm-modal-tab${modalTab === "aplicacao" ? " active" : ""}${selectedLead.formsapp_completed ? " has-data" : ""}`}
-                onClick={() => setModalTab("aplicacao")}
-              >
-                📋 Aplicação {selectedLead.formsapp_completed && <span className="adm-tab-badge">!</span>}
-              </button>
-            </div>
+interface ParsedSubmission {
+  answers: { title: string; value: string }[];
+  createdAt?: string;
+  submissionId?: string;
+  [key: string]: unknown;
+}
 
-            {/* ─── TAB: PERFIL ─── */}
-            {modalTab === "perfil" && (
-              <>
-                {/* Lead timeline */}
-                <div className="adm-timeline">
-                  <div className="adm-timeline-item done">
-                    <div className="adm-timeline-dot" />
-                    <div className="adm-timeline-text">
-                      <strong>Calculadora V.I.S.O.R.</strong>
-                      <span>{selectedLead.created_at ? new Date(selectedLead.created_at).toLocaleString("pt-BR") : "—"}</span>
-                    </div>
-                  </div>
-                  <div className={`adm-timeline-item${selectedLead.formsapp_completed ? " done" : ""}`}>
-                    <div className="adm-timeline-dot" />
-                    <div className="adm-timeline-text">
-                      <strong>Aplicação Forms.app</strong>
-                      <span>{selectedLead.formsapp_completed ? (selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : "Sim") : "Pendente"}</span>
-                    </div>
-                  </div>
-                  <div className={`adm-timeline-item${selectedLead.contact_status && selectedLead.contact_status !== "novo" ? " done" : ""}`}>
-                    <div className="adm-timeline-dot" />
-                    <div className="adm-timeline-text">
-                      <strong>Contato realizado</strong>
-                      <span>{selectedLead.contact_status && selectedLead.contact_status !== "novo" ? CONTACT_LABELS[selectedLead.contact_status] : "Pendente"}</span>
-                    </div>
-                  </div>
-                  <div className={`adm-timeline-item${selectedLead.contact_status === "agendou" ? " done" : ""}`}>
-                    <div className="adm-timeline-dot" />
-                    <div className="adm-timeline-text">
-                      <strong>Sessão agendada</strong>
-                      <span>{selectedLead.contact_status === "agendou" ? "Confirmado" : "Pendente"}</span>
-                    </div>
-                  </div>
-                </div>
+interface SyncResult {
+  unmatched_id?: number;
+  index?: number;
+  lead_id: number | null;
+  lead_name: string | null;
+  status?: string;
+  method?: string;
+}
 
-                {/* Details grid */}
-                <div className="adm-modal-grid">
-                  <div className="adm-modal-field">
-                    <label>WhatsApp</label>
-                    <a href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
-                      {selectedLead.whatsapp}
-                    </a>
-                  </div>
-                  <div className="adm-modal-field">
-                    <label>Faturamento</label>
-                    <span>{selectedLead.faturamento || "—"}</span>
-                  </div>
-                  <div className="adm-modal-field">
-                    <label>Equipe</label>
-                    <span>{selectedLead.equipe || "—"}</span>
-                  </div>
-                  <div className="adm-modal-field">
-                    <label>Urgência</label>
-                    <span>{selectedLead.urgencia || "—"}</span>
-                  </div>
-                  <div className="adm-modal-field">
-                    <label>Investimento</label>
-                    <span>{selectedLead.investimento || "—"}</span>
-                  </div>
-                  <div className="adm-modal-field full">
-                    <label>Mercado</label>
-                    <span>{selectedLead.mercado || "—"}</span>
-                  </div>
-                  <div className="adm-modal-field full">
-                    <label>Dores</label>
-                    <span>{selectedLead.dores?.join(", ") || "—"}</span>
-                  </div>
-                </div>
+interface UnmatchedSub {
+  id: number;
+  phone_digits: string | null;
+  name_candidates: string[];
+  matched: boolean;
+  matched_lead_id: number | null;
+  created_at: string;
+}
 
-                {/* Status de contato */}
-                <div className="adm-modal-section">
-                  <label>Status de Contato</label>
-                  <div className="adm-status-btns">
-                    {(["novo", "contactado", "agendou", "sem_resposta", "descartado"] as ContactStatus[]).map((s) => (
-                      <button
-                        key={s}
-                        className={`adm-status-btn${(selectedLead.contact_status || "novo") === s ? " active" : ""}`}
-                        style={{ borderColor: CONTACT_COLORS[s], color: (selectedLead.contact_status || "novo") === s ? "#fff" : CONTACT_COLORS[s], background: (selectedLead.contact_status || "novo") === s ? CONTACT_COLORS[s] + "33" : "transparent" }}
-                        onClick={() => updateLead(selectedLead.id, { contact_status: s })}
-                      >
-                        {CONTACT_LABELS[s]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+function parseCSVSync(text: string): ParsedSubmission[] {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+  const sep = lines[0].includes("\t") ? "\t" : lines[0].includes(";") ? ";" : ",";
+  function splitRow(line: string): string[] {
+    const cols: string[] = []; let current = ""; let inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQ && line[i+1] === '"') { current += '"'; i++; } else inQ = !inQ; }
+      else if (ch === sep && !inQ) { cols.push(current.trim()); current = ""; }
+      else current += ch;
+    }
+    cols.push(current.trim()); return cols;
+  }
+  const headers = splitRow(lines[0]);
+  const results: ParsedSubmission[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitRow(lines[i]);
+    if (cols.length < 3) continue;
+    const answers: { title: string; value: string }[] = [];
+    let createdAt = "", submissionId = "";
+    for (let j = 0; j < headers.length; j++) {
+      const h = headers[j].toLowerCase(), v = cols[j] || "";
+      if (h.includes("data") && h.includes("envio")) createdAt = v;
+      else if (h.includes("id") && h.includes("envio")) submissionId = v;
+      else if (v) answers.push({ title: headers[j], value: v });
+    }
+    results.push({ answers, createdAt, submissionId });
+  }
+  return results;
+}
 
-                {/* Notas */}
-                <div className="adm-modal-section">
-                  <label>Notas da equipe</label>
-                  <textarea
-                    className="adm-notes"
-                    rows={3}
-                    placeholder="Ex: Vai agendar semana que vem..."
-                    value={selectedLead.notes || ""}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSelectedLead((prev) => prev ? { ...prev, notes: val } : prev);
-                      setLeads((prev) => prev.map((l) => l.id === selectedLead.id ? { ...l, notes: val } : l));
-                    }}
-                    onBlur={() => updateLead(selectedLead.id, { notes: selectedLead.notes || "" })}
-                  />
-                </div>
-              </>
-            )}
+function parseFormsAppTextSync(text: string): ParsedSubmission[] {
+  const cleaned = text.replace(/\d+\s*-\s*\d+\s+of\s+\d+/g, "").replace(/^Aprovados:.*$/gm, "").replace(/^Contagem de registros:.*$/gm, "").replace(/^\( Os dados podem demorar.*$/gm, "");
+  const dateIdPattern = /(\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M)\s*\n\s*([a-f0-9]{10,})/g;
+  const records: { text: string; date: string; id: string }[] = [];
+  let lastEnd = 0; let match;
+  while ((match = dateIdPattern.exec(cleaned)) !== null) {
+    const recordText = cleaned.slice(lastEnd, match.index).trim();
+    if (recordText.length > 10) records.push({ text: recordText, date: match[1], id: match[2] });
+    lastEnd = match.index + match[0].length;
+  }
+  if (records.length === 0) {
+    const lines = cleaned.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.some((l) => isKnownLabel(l))) records.push({ text: cleaned, date: "", id: "" });
+  }
+  if (records.length === 0) return [];
+  const results: ParsedSubmission[] = [];
+  for (const rec of records) {
+    const lines = rec.text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const cleanLines = lines.filter((l) => !(/^\d{1,2}$/.test(l)));
+    const answers: { title: string; value: string }[] = [];
+    const hasLabels = cleanLines.some((l) => l.endsWith(":") && isKnownLabel(l));
+    if (hasLabels) {
+      let currentLabel = ""; let currentValue: string[] = [];
+      for (const line of cleanLines) {
+        if (line.endsWith(":") && isKnownLabel(line)) {
+          if (currentLabel && currentValue.length > 0) { const val = currentValue.join("\n").trim(); if (val) answers.push({ title: currentLabel.replace(/:$/, ""), value: val }); }
+          currentLabel = line; currentValue = [];
+        } else currentValue.push(line);
+      }
+      if (currentLabel && currentValue.length > 0) { const val = currentValue.join("\n").trim(); if (val) answers.push({ title: currentLabel.replace(/:$/, ""), value: val }); }
+    } else {
+      for (let i = 0; i < Math.min(cleanLines.length, FORMSAPP_FIELDS.length); i++) {
+        if (cleanLines[i]) answers.push({ title: FORMSAPP_FIELDS[i], value: cleanLines[i] });
+      }
+    }
+    if (answers.length > 0) results.push({ answers, createdAt: rec.date, submissionId: rec.id });
+  }
+  return results;
+}
 
-            {/* ─── TAB: APLICAÇÃO ─── */}
-            {modalTab === "aplicacao" && (
-              <>
-                {!selectedLead.formsapp_completed ? (
-                  <div className="adm-forms-empty">
-                    <span className="adm-forms-empty-icon">📋</span>
-                    <p>Este lead ainda não preencheu o formulário de aplicação.</p>
-                    <p className="adm-forms-empty-hint">Quando preencher, as respostas e insights aparecerão aqui automaticamente.</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* Forms.app responses */}
-                    {selectedLead.formsapp_data && (() => {
-                      const qa = parseFormsAppData(selectedLead.formsapp_data);
-                      return qa.length > 0 ? (
-                        <div className="adm-forms-section">
-                          <div className="adm-forms-header">
-                            <span className="adm-forms-icon">📋</span>
-                            <strong>Respostas da Aplicação</strong>
-                            <span className="adm-forms-date">{selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : ""}</span>
-                          </div>
-                          <div className="adm-forms-list">
-                            {qa.map((item, i) => (
-                              <div key={i} className="adm-forms-item">
-                                <div className="adm-forms-q">{item.question}</div>
-                                <div className="adm-forms-a">{item.answer}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ) : null;
-                    })()}
+function detectAndParseSync(text: string): { submissions: ParsedSubmission[]; format: string } {
+  const trimmed = text.trim();
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      const arr = Array.isArray(parsed) ? parsed : [parsed];
+      const subs = arr.map((item: Record<string, unknown>) => {
+        if (item.answers && Array.isArray(item.answers)) return item as ParsedSubmission;
+        const answers: { title: string; value: string }[] = [];
+        for (const [k, v] of Object.entries(item)) { if (v && typeof v === "string") answers.push({ title: k, value: v }); }
+        return { answers, createdAt: (item.createdAt || item.created_at || "") as string };
+      });
+      return { submissions: subs, format: "JSON" };
+    } catch { /* not JSON */ }
+  }
+  const hasFormsPattern = /\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M/.test(trimmed);
+  const hasLabels = trimmed.split("\n").some((l) => l.trim().endsWith(":") && isKnownLabel(l.trim()));
+  if (hasFormsPattern || hasLabels) {
+    const parsed = parseFormsAppTextSync(trimmed);
+    if (parsed.length > 0) return { submissions: parsed, format: "Texto Forms.app" };
+  }
+  const firstLine = trimmed.split("\n")[0];
+  const hasCsvHeader = firstLine.includes(",") || firstLine.includes("\t") || firstLine.includes(";");
+  const looksLikeCsv = hasCsvHeader && (firstLine.toLowerCase().includes("nome") || firstLine.toLowerCase().includes("email") || firstLine.toLowerCase().includes("telefone"));
+  if (looksLikeCsv) { const parsed = parseCSVSync(trimmed); if (parsed.length > 0) return { submissions: parsed, format: "CSV" }; }
+  const csvAttempt = parseCSVSync(trimmed);
+  if (csvAttempt.length > 0) return { submissions: csvAttempt, format: "CSV" };
+  return { submissions: [], format: "desconhecido" };
+}
 
-                    {/* AI Insights */}
-                    <div className="adm-insights-section">
-                      {!insights && !insightsLoading && (
-                        <button className="adm-btn-insights" onClick={() => fetchInsights(selectedLead)}>
-                          🧠 Gerar Insights com IA
-                        </button>
-                      )}
-                      {insightsLoading && (
-                        <div className="adm-insights-loading">
-                          <div className="adm-insights-spinner" />
-                          <span>Analisando perfil com IA...</span>
-                        </div>
-                      )}
-                      {insights && (
-                        <div className="adm-insights-content">
-                          <div className="adm-insights-header">
-                            <span>🧠</span>
-                            <strong>Insights IA</strong>
-                            <span className={`adm-insights-prob ${String(insights.probabilidade_fechamento || "").toLowerCase()}`}>
-                              {String(insights.probabilidade_fechamento || "")} chance
-                            </span>
-                            <span className="adm-insights-prod">{String(insights.produto_ideal || "")}</span>
-                          </div>
+function SyncSection() {
+  const [textInput, setTextInput] = useState("");
+  const [parsed, setParsed] = useState<ParsedSubmission[]>([]);
+  const [detectedFormat, setDetectedFormat] = useState("");
+  const [importing, setImporting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [setupDone, setSetupDone] = useState(false);
+  const [setupLoading, setSetupLoading] = useState(false);
+  const [setupSql, setSetupSql] = useState("");
+  const [importResult, setImportResult] = useState<{ total: number; matched: number; already_matched: number; unmatched_stored: number; results: SyncResult[] } | null>(null);
+  const [syncResult, setSyncResult] = useState<{ total_unmatched: number; synced: number; still_unmatched: number; results: SyncResult[] } | null>(null);
+  const [unmatched, setUnmatched] = useState<UnmatchedSub[]>([]);
+  const [syncLeads, setSyncLeads] = useState<{ id: number; nome: string; whatsapp: string; formsapp_completed: boolean }[]>([]);
+  const [linking, setLinking] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-                          <div className="adm-insights-grid">
-                            <div className="adm-insights-card">
-                              <div className="adm-insights-card-label">🔥 Maior Dor</div>
-                              <div className="adm-insights-card-text">{String(insights.maior_dor || "")}</div>
-                            </div>
-                            <div className="adm-insights-card">
-                              <div className="adm-insights-card-label">💪 Ponto Forte</div>
-                              <div className="adm-insights-card-text">{String(insights.ponto_forte || "")}</div>
-                            </div>
-                            <div className="adm-insights-card">
-                              <div className="adm-insights-card-label">⚠️ Ponto Fraco</div>
-                              <div className="adm-insights-card-text">{String(insights.ponto_fraco || "")}</div>
-                            </div>
-                            <div className="adm-insights-card full">
-                              <div className="adm-insights-card-label">🎯 Conexão com Ignition</div>
-                              <div className="adm-insights-card-text">{String(insights.conexao_ignition || "")}</div>
-                            </div>
-                          </div>
+  const runSetup = async () => {
+    setSetupLoading(true); setSetupSql("");
+    try {
+      const res = await fetch("/api/admin/formsapp-setup", { method: "POST" });
+      const data = await res.json();
+      if (data.sql) setSetupSql(data.sql); else setSetupDone(true);
+    } catch { setSetupSql("Erro ao criar tabela."); }
+    finally { setSetupLoading(false); }
+  };
 
-                          <div className="adm-insights-approaches">
-                            <div className="adm-insights-card-label">💬 Sugestões de Abordagem</div>
-                            {Array.isArray(insights.abordagens) && insights.abordagens.map((a: string, i: number) => (
-                              <div key={i} className="adm-insights-approach">
-                                <span className="adm-insights-approach-num">{i + 1}</span>
-                                <span>{a}</span>
-                              </div>
-                            ))}
-                          </div>
+  const fetchUnmatched = async () => {
+    try {
+      const res = await fetch("/api/admin/formsapp-unmatched");
+      if (res.ok) { const data = await res.json(); setUnmatched(data.unmatched || []); setSyncLeads(data.leads || []); }
+    } catch (e) { console.error("Fetch unmatched:", e); }
+  };
 
-                          <div className="adm-insights-gancho">
-                            <div className="adm-insights-card-label">🎣 Frase Gancho</div>
-                            <div className="adm-insights-gancho-text">&ldquo;{String(insights.frase_gancho || "")}&rdquo;</div>
-                          </div>
+  useEffect(() => { runSetup(); fetchUnmatched(); }, []);
 
-                          {insights.alertas && String(insights.alertas).trim() !== "" ? (
-                            <div className="adm-insights-alert">
-                              <span>🚨</span> {String(insights.alertas)}
-                            </div>
-                          ) : null}
+  const handleTextChange = useCallback((text: string) => {
+    setTextInput(text); setImportResult(null);
+    if (text.trim().length < 20) { setParsed([]); setDetectedFormat(""); return; }
+    const { submissions, format } = detectAndParseSync(text);
+    setParsed(submissions); setDetectedFormat(format);
+  }, []);
 
-                          <button className="adm-btn-insights regen" onClick={() => fetchInsights(selectedLead)}>
-                            🔄 Regenerar Insights
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
+  const handleFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => { const text = e.target?.result as string; if (text) handleTextChange(text); };
+    reader.readAsText(file);
+  }, [handleTextChange]);
 
-            {/* Actions — always visible */}
-            <div className="adm-modal-actions">
-              <a
-                href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(
-                  insights?.frase_gancho
-                    ? `Oi ${selectedLead.nome || ""}, tudo bem? Me chamo Alê, da equipe do Pedro Superti. ${insights.frase_gancho}`
-                    : `Oi ${selectedLead.nome || ""}, tudo bem? Me chamo Alê. Sou da equipe do Pedro Superti. Vi que você usou a Calculadora V.I.S.O.R. e seu perfil chamou atenção. Posso te fazer umas perguntas rápidas?`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="adm-btn-whatsapp"
-              >
-                Abrir WhatsApp {insights ? "(com frase gancho)" : ""}
-              </a>
-            </div>
-          </div>
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault(); setDragOver(false);
+    const file = e.dataTransfer.files?.[0]; if (file) handleFile(file);
+  }, [handleFile]);
+
+  const handleImport = async () => {
+    if (parsed.length === 0) return;
+    setImporting(true); setImportResult(null);
+    try {
+      const res = await fetch("/api/admin/formsapp-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissions: parsed }) });
+      const data = await res.json();
+      if (data.error) alert("Erro: " + data.error); else setImportResult(data);
+      fetchUnmatched();
+    } catch (e) { alert("Erro ao importar: " + String(e)); }
+    finally { setImporting(false); }
+  };
+
+  const handleSync = async () => {
+    setSyncing(true); setSyncResult(null);
+    try {
+      const res = await fetch("/api/admin/formsapp-sync", { method: "POST" });
+      const data = await res.json();
+      if (data.error) alert("Erro: " + data.error); else setSyncResult(data);
+      fetchUnmatched();
+    } catch (e) { console.error("Sync error:", e); }
+    finally { setSyncing(false); }
+  };
+
+  const handleManualLink = async (unmatchedId: number, leadId: number) => {
+    setLinking(unmatchedId);
+    try {
+      const res = await fetch("/api/admin/formsapp-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ unmatched_id: unmatchedId, lead_id: leadId }) });
+      if (res.ok) fetchUnmatched();
+    } catch (e) { console.error("Link error:", e); }
+    finally { setLinking(null); }
+  };
+
+  const availableLeads = syncLeads.filter((l) => !l.formsapp_completed);
+
+  function getPreview(sub: ParsedSubmission): { name: string; phone: string } {
+    const nameField = sub.answers?.find((a) => a.title.toLowerCase().includes("nome") && !a.title.toLowerCase().includes("empresa"));
+    const phoneField = sub.answers?.find((a) => a.title.toLowerCase().includes("telefone") || a.title.toLowerCase().includes("whatsapp"));
+    return { name: nameField?.value || sub.answers?.[0]?.value || "—", phone: phoneField?.value || "—" };
+  }
+
+  return (
+    <>
+      <div className="adm-section-title">SINCRONIZAR FORMS.APP</div>
+
+      {setupSql && (
+        <div className="adm-ficha-section">
+          <h2 className="adm-ficha-section-title">Setup Necessario</h2>
+          <p style={{ color: "#F97316", fontSize: 13, marginBottom: 12 }}>Execute este SQL no Supabase:</p>
+          <pre style={{ background: "rgba(255,255,255,.04)", padding: 16, borderRadius: 4, fontSize: 12, overflow: "auto", color: "#E2DDD4" }}>{setupSql}</pre>
+          <button className="adm-btn-insights" onClick={runSetup} disabled={setupLoading} style={{ marginTop: 12 }}>{setupLoading ? "Verificando..." : "Verificar novamente"}</button>
         </div>
       )}
-    </div>
+
+      {(setupDone || !setupSql) && (
+        <>
+          <div className="adm-ficha-section">
+            <h2 className="adm-ficha-section-title">1. Importar Respostas</h2>
+            <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>Cole os dados ou arraste um arquivo. Aceita CSV, JSON, TXT ou texto copiado.</p>
+            <div
+              onClick={() => fileRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              style={{ padding: 20, border: `2px dashed ${dragOver ? "#C9A84C" : "rgba(255,255,255,.1)"}`, borderRadius: 6, textAlign: "center", cursor: "pointer", marginBottom: 12, background: dragOver ? "rgba(201,168,76,.05)" : "transparent", transition: "all .2s" }}
+            >
+              <div style={{ fontSize: 13, color: "rgba(226,221,212,.5)" }}>Arraste um arquivo ou <span style={{ color: "#C9A84C", textDecoration: "underline" }}>clique para selecionar</span></div>
+              <div style={{ fontSize: 11, color: "rgba(226,221,212,.25)", marginTop: 4 }}>.csv, .json, .txt</div>
+              <input ref={fileRef} type="file" accept=".csv,.json,.txt,.tsv" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+            </div>
+            <div style={{ fontSize: 12, color: "rgba(226,221,212,.3)", textAlign: "center", margin: "8px 0" }}>ou cole diretamente:</div>
+            <textarea className="adm-notes" rows={5} placeholder="Cole aqui os dados do Forms.app..." value={textInput} onChange={(e) => handleTextChange(e.target.value)} style={{ fontFamily: "monospace", fontSize: 11 }} />
+
+            {detectedFormat && (
+              <div style={{ marginTop: 12, padding: 12, background: "rgba(255,255,255,.03)", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ color: "#22C55E", fontSize: 16 }}>&#10003;</span>
+                  <span style={{ fontSize: 13 }}>Formato: <strong style={{ color: "#C9A84C" }}>{detectedFormat}</strong> — <strong style={{ color: "#22C55E" }}>{parsed.length}</strong> submissoes</span>
+                </div>
+                {parsed.length > 0 && (
+                  <div style={{ maxHeight: 180, overflow: "auto" }}>
+                    <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                      <thead><tr style={{ borderBottom: "1px solid rgba(255,255,255,.1)" }}><th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>#</th><th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>Nome</th><th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>Tel</th></tr></thead>
+                      <tbody>{parsed.map((sub, i) => { const p = getPreview(sub); return (<tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,.04)" }}><td style={{ padding: "4px 8px", color: "rgba(226,221,212,.3)" }}>{i + 1}</td><td style={{ padding: "4px 8px" }}>{p.name}</td><td style={{ padding: "4px 8px", color: "rgba(226,221,212,.5)" }}>{p.phone}</td></tr>); })}</tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+            <button className="adm-btn-insights" onClick={handleImport} disabled={importing || parsed.length === 0} style={{ marginTop: 12, opacity: parsed.length === 0 ? 0.4 : 1 }}>
+              {importing ? "Importando..." : `Importar ${parsed.length} submissoes`}
+            </button>
+            {importResult && (
+              <div style={{ marginTop: 16, padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 4, fontSize: 13 }}>
+                <p>Total: <strong>{importResult.total}</strong></p>
+                <p style={{ color: "#22C55E" }}>Vinculados: <strong>{importResult.matched}</strong></p>
+                <p style={{ color: "#EAB308" }}>Ja vinculados: <strong>{importResult.already_matched}</strong></p>
+                <p style={{ color: "#EF4444" }}>Sem match: <strong>{importResult.unmatched_stored}</strong></p>
+              </div>
+            )}
+          </div>
+
+          <div className="adm-ficha-section">
+            <h2 className="adm-ficha-section-title">2. Re-sincronizar Pendentes</h2>
+            <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>Tenta re-vincular submissoes pendentes com leads existentes.</p>
+            <button className="adm-btn-insights" onClick={handleSync} disabled={syncing}>{syncing ? "Sincronizando..." : "Re-sincronizar Agora"}</button>
+            {syncResult && (
+              <div style={{ marginTop: 16, padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 4, fontSize: 13 }}>
+                <p>Pendentes: <strong>{syncResult.total_unmatched}</strong></p>
+                <p style={{ color: "#22C55E" }}>Sincronizados: <strong>{syncResult.synced}</strong></p>
+                <p style={{ color: "#EF4444" }}>Sem match: <strong>{syncResult.still_unmatched}</strong></p>
+              </div>
+            )}
+          </div>
+
+          <div className="adm-ficha-section">
+            <h2 className="adm-ficha-section-title">3. Vincular Manualmente ({unmatched.filter((u) => !u.matched).length})</h2>
+            {unmatched.filter((u) => !u.matched).length === 0 ? (
+              <p style={{ color: "rgba(226,221,212,.3)", fontSize: 14 }}>Tudo vinculado!</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {unmatched.filter((u) => !u.matched).map((sub) => (
+                  <div key={sub.id} style={{ padding: 14, background: "rgba(255,255,255,.03)", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{sub.name_candidates?.[0] || "Sem nome"}</div>
+                        <div style={{ fontSize: 12, color: "rgba(226,221,212,.4)", marginTop: 4 }}>Tel: {sub.phone_digits || "—"} &middot; {new Date(sub.created_at).toLocaleString("pt-BR")}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <select id={`link-sel-${sub.id}`} style={{ padding: "6px 8px", background: "#0D1117", color: "#E2DDD4", border: "1px solid rgba(255,255,255,.1)", borderRadius: 4, fontSize: 12, maxWidth: 200 }} defaultValue="">
+                          <option value="" disabled>Vincular a...</option>
+                          {availableLeads.map((l) => <option key={l.id} value={l.id}>{l.nome} ({l.whatsapp})</option>)}
+                        </select>
+                        <button className="adm-btn-insights" style={{ padding: "6px 12px", fontSize: 12 }} disabled={linking === sub.id} onClick={() => { const sel = document.getElementById(`link-sel-${sub.id}`) as HTMLSelectElement; if (sel?.value) handleManualLink(sub.id, parseInt(sel.value, 10)); }}>
+                          {linking === sub.id ? "..." : "Vincular"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </>
   );
 }
