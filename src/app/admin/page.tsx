@@ -194,6 +194,39 @@ export default function AdminDashboard() {
   const [sort, setSort] = useState<SortKey>("date");
   const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [insights, setInsights] = useState<Record<string, unknown> | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+
+  const fetchInsights = async (lead: Lead) => {
+    setInsightsLoading(true);
+    setInsights(null);
+    try {
+      const res = await fetch("/api/admin/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: lead.nome,
+          mercado: lead.mercado,
+          faturamento: lead.faturamento,
+          equipe: lead.equipe,
+          urgencia: lead.urgencia,
+          investimento: lead.investimento,
+          dores: lead.dores,
+          tier: lead.tier,
+          internal_score: lead.internal_score,
+          formsapp_data: lead.formsapp_data,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setInsights(data);
+      }
+    } catch (e) {
+      console.error("Insights error:", e);
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -1218,9 +1251,9 @@ export default function AdminDashboard() {
 
       {/* ═══ DETAIL MODAL ═══ */}
       {selectedLead && (
-        <div className="adm-overlay" onClick={() => setSelectedLead(null)}>
+        <div className="adm-overlay" onClick={() => { setSelectedLead(null); setInsights(null); }}>
           <div className="adm-modal" onClick={(e) => e.stopPropagation()}>
-            <button className="adm-modal-x" onClick={() => setSelectedLead(null)}>✕</button>
+            <button className="adm-modal-x" onClick={() => { setSelectedLead(null); setInsights(null); }}>✕</button>
 
             {/* Header */}
             <div className="adm-modal-header">
@@ -1368,15 +1401,90 @@ export default function AdminDashboard() {
               />
             </div>
 
+            {/* AI Insights */}
+            <div className="adm-insights-section">
+              {!insights && !insightsLoading && (
+                <button className="adm-btn-insights" onClick={() => fetchInsights(selectedLead)}>
+                  🧠 Gerar Insights com IA
+                </button>
+              )}
+              {insightsLoading && (
+                <div className="adm-insights-loading">
+                  <div className="adm-insights-spinner" />
+                  <span>Analisando perfil com IA...</span>
+                </div>
+              )}
+              {insights && (
+                <div className="adm-insights-content">
+                  <div className="adm-insights-header">
+                    <span>🧠</span>
+                    <strong>Insights IA</strong>
+                    <span className={`adm-insights-prob ${String(insights.probabilidade_fechamento || "").toLowerCase()}`}>
+                      {String(insights.probabilidade_fechamento || "")} chance
+                    </span>
+                    <span className="adm-insights-prod">{String(insights.produto_ideal || "")}</span>
+                  </div>
+
+                  <div className="adm-insights-grid">
+                    <div className="adm-insights-card">
+                      <div className="adm-insights-card-label">🔥 Maior Dor</div>
+                      <div className="adm-insights-card-text">{String(insights.maior_dor || "")}</div>
+                    </div>
+                    <div className="adm-insights-card">
+                      <div className="adm-insights-card-label">💪 Ponto Forte</div>
+                      <div className="adm-insights-card-text">{String(insights.ponto_forte || "")}</div>
+                    </div>
+                    <div className="adm-insights-card">
+                      <div className="adm-insights-card-label">⚠️ Ponto Fraco</div>
+                      <div className="adm-insights-card-text">{String(insights.ponto_fraco || "")}</div>
+                    </div>
+                    <div className="adm-insights-card full">
+                      <div className="adm-insights-card-label">🎯 Conexão com Ignition</div>
+                      <div className="adm-insights-card-text">{String(insights.conexao_ignition || "")}</div>
+                    </div>
+                  </div>
+
+                  <div className="adm-insights-approaches">
+                    <div className="adm-insights-card-label">💬 Sugestões de Abordagem</div>
+                    {Array.isArray(insights.abordagens) && insights.abordagens.map((a: string, i: number) => (
+                      <div key={i} className="adm-insights-approach">
+                        <span className="adm-insights-approach-num">{i + 1}</span>
+                        <span>{a}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="adm-insights-gancho">
+                    <div className="adm-insights-card-label">🎣 Frase Gancho</div>
+                    <div className="adm-insights-gancho-text">&ldquo;{String(insights.frase_gancho || "")}&rdquo;</div>
+                  </div>
+
+                  {insights.alertas && String(insights.alertas).trim() !== "" ? (
+                    <div className="adm-insights-alert">
+                      <span>🚨</span> {String(insights.alertas)}
+                    </div>
+                  ) : null}
+
+                  <button className="adm-btn-insights regen" onClick={() => fetchInsights(selectedLead)}>
+                    🔄 Regenerar Insights
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="adm-modal-actions">
               <a
-                href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Oi ${selectedLead.nome || ""}, tudo bem? Me chamo Alê. Sou da equipe do Pedro Superti. Vi que você usou a Calculadora V.I.S.O.R. e seu perfil chamou atenção. Posso te fazer umas perguntas rápidas?`)}`}
+                href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(
+                  insights?.frase_gancho
+                    ? `Oi ${selectedLead.nome || ""}, tudo bem? Me chamo Alê, da equipe do Pedro Superti. ${insights.frase_gancho}`
+                    : `Oi ${selectedLead.nome || ""}, tudo bem? Me chamo Alê. Sou da equipe do Pedro Superti. Vi que você usou a Calculadora V.I.S.O.R. e seu perfil chamou atenção. Posso te fazer umas perguntas rápidas?`
+                )}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="adm-btn-whatsapp"
               >
-                Abrir WhatsApp
+                Abrir WhatsApp {insights ? "(com frase gancho)" : ""}
               </a>
             </div>
           </div>
