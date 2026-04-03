@@ -93,6 +93,263 @@ function stepToIndex(step: WizardStep): number {
 
 const CONSULTORIA_URL = "https://sis39334.forms.app/aplicacao-consultoria-1";
 
+// ─── PDF REPORT GENERATOR ──────────────────────────────────────────────────
+
+function generatePDFReport(
+  data: WizardData,
+  diagnose: DiagnoseResult,
+  tier: "hot" | "warm" | "cold"
+) {
+  const fmtPdf = (val: number) => {
+    if (!val) return "—";
+    if (val >= 1e9) return `R$ ${(val / 1e9).toFixed(1).replace(".", ",")} bilhões`;
+    if (val >= 1e6) return `R$ ${(val / 1e6).toFixed(1).replace(".", ",")} milhões`;
+    if (val >= 1e3) return `R$ ${(val / 1e3).toFixed(0)}k`;
+    return `R$ ${val.toFixed(0)}`;
+  };
+
+  const ideaCards = diagnose.ideias.map((idea, i) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a = idea as any;
+    return `
+      <div class="idea-card">
+        <div class="idea-header-row">
+          <span class="idea-num">#${i + 1}</span>
+          <span class="idea-badge-ia ${idea.usa_ia ? "com" : "sem"}">${idea.usa_ia ? "COM IA" : "SEM IA"}</span>
+        </div>
+        <h3 class="idea-name">${idea.nome}</h3>
+        <p class="idea-desc">${idea.descricao}</p>
+        <div class="metrics-grid">
+          <div class="metric gold">
+            <div class="metric-label">RIQUEZA DESBLOQUEADA</div>
+            <div class="metric-val">${fmtPdf(idea.potencial_anual)}/ano</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">TEMPO DE RETORNO</div>
+            <div class="metric-val">${idea.tempo_retorno_dias} dias</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">CONCORRÊNCIA</div>
+            <div class="metric-val">${idea.concorrencia}</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">DIFICULDADE</div>
+            <div class="metric-val">${idea.dificuldade}</div>
+          </div>
+        </div>
+        ${a.publico_alvo ? `<div class="info-box"><div class="info-label">PÚBLICO-ALVO</div><p>${a.publico_alvo}</p></div>` : ""}
+        ${a.primeiro_passo ? `<div class="info-box accent"><div class="info-label">PRIMEIRO PASSO</div><p>${a.primeiro_passo}</p></div>` : ""}
+        <div class="info-box warn"><div class="info-label">CUIDADOS</div><p>${idea.cuidados}</p></div>
+        ${idea.usa_ia && idea.como_usa_ia ? `<div class="info-box"><div class="info-label">COMO A IA É USADA</div><p>${idea.como_usa_ia}</p></div>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  const totalRiqueza = fmtPdf(diagnose.scores.riqueza_total);
+  const setor = data.mercadoConfirmado?.setor_formatado || data.mercado;
+  const tam = data.mercadoConfirmado ? fmtPdf(data.mercadoConfirmado.tam_estimado) : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"/>
+<title>Relatório V.I.S.O.R. — ${data.nome}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Outfit',sans-serif;background:#07090F;color:#E2DDD4;padding:0;margin:0}
+  .page{max-width:800px;margin:0 auto;padding:40px 48px}
+
+  /* Cover */
+  .cover{text-align:center;padding:60px 0 40px;border-bottom:1px solid rgba(201,168,76,.15);margin-bottom:40px}
+  .cover-brand{font-family:'Bebas Neue',sans-serif;font-size:48px;color:#C9A84C;letter-spacing:8px;margin-bottom:4px}
+  .cover-sub{font-size:13px;color:rgba(226,221,212,.35);letter-spacing:3px;margin-bottom:32px}
+  .cover-name{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#E2DDD4;letter-spacing:2px;margin-bottom:8px}
+  .cover-setor{font-size:16px;color:rgba(201,168,76,.7)}
+  .cover-date{font-size:12px;color:rgba(226,221,212,.25);margin-top:16px}
+
+  /* Market */
+  .market-section{background:rgba(255,255,255,.02);border:1px solid rgba(201,168,76,.12);padding:24px;margin-bottom:32px}
+  .market-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:rgba(201,168,76,.6);margin-bottom:12px}
+  .market-row{display:flex;gap:24px}
+  .market-stat{flex:1}
+  .market-stat-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,.45);margin-bottom:4px}
+  .market-stat-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#C9A84C}
+
+  /* Section titles */
+  .section-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#C9A84C;letter-spacing:3px;margin:36px 0 20px;padding-bottom:8px;border-bottom:1px solid rgba(201,168,76,.12)}
+
+  /* Idea cards */
+  .idea-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);padding:28px;margin-bottom:20px;page-break-inside:avoid}
+  .idea-header-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .idea-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:rgba(201,168,76,.5)}
+  .idea-badge-ia{font-size:10px;letter-spacing:2px;padding:3px 10px;font-weight:700}
+  .idea-badge-ia.com{background:rgba(34,197,94,.1);color:#22C55E}
+  .idea-badge-ia.sem{background:rgba(249,115,22,.1);color:#F97316}
+  .idea-name{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#E2DDD4;letter-spacing:1px;margin-bottom:8px}
+  .idea-desc{font-size:14px;color:rgba(226,221,212,.6);line-height:1.6;margin-bottom:18px}
+
+  .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+  .metric{background:rgba(255,255,255,.03);padding:12px;border:1px solid rgba(255,255,255,.04)}
+  .metric.gold{border-color:rgba(201,168,76,.2);background:rgba(201,168,76,.04)}
+  .metric-label{font-size:9px;letter-spacing:1.5px;color:rgba(226,221,212,.35);margin-bottom:4px}
+  .metric-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#E2DDD4}
+  .metric.gold .metric-val{color:#C9A84C}
+
+  .info-box{background:rgba(255,255,255,.02);border-left:3px solid rgba(201,168,76,.2);padding:14px 16px;margin-bottom:10px}
+  .info-box.accent{border-left-color:#22C55E}
+  .info-box.warn{border-left-color:#F97316}
+  .info-label{font-size:10px;letter-spacing:1.5px;color:rgba(201,168,76,.5);margin-bottom:6px;font-weight:600}
+  .info-box p{font-size:13px;color:rgba(226,221,212,.65);line-height:1.6}
+
+  /* Plan */
+  .plan-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px}
+  .plan-item{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);padding:18px}
+  .plan-item-label{font-family:'Bebas Neue',sans-serif;font-size:14px;color:rgba(201,168,76,.6);letter-spacing:1px;margin-bottom:8px}
+  .plan-item-text{font-size:13px;color:rgba(226,221,212,.65);line-height:1.6}
+  .plan-item.full{grid-column:1 / -1}
+
+  /* Scores */
+  .scores-row{display:flex;gap:20px;margin-bottom:24px}
+  .score-box{flex:1;text-align:center;padding:24px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}
+  .score-label{font-size:10px;letter-spacing:2px;margin-bottom:8px}
+  .score-label.atual{color:#F97316}
+  .score-label.vis{color:#22C55E}
+  .score-num{font-family:'Bebas Neue',sans-serif;font-size:48px;line-height:1}
+  .score-num.atual{color:#F97316}
+  .score-num.vis{color:#22C55E}
+  .score-items{margin-top:12px;text-align:left}
+  .score-item{font-size:12px;color:rgba(226,221,212,.55);line-height:1.8;padding-left:12px;position:relative}
+  .score-item::before{content:'';position:absolute;left:0;top:8px;width:6px;height:6px;border-radius:50%}
+  .score-box.atual-box .score-item::before{background:#F97316}
+  .score-box.vis-box .score-item::before{background:#22C55E}
+
+  /* Riqueza total */
+  .riqueza-total{text-align:center;padding:28px;background:rgba(201,168,76,.04);border:1px solid rgba(201,168,76,.15);margin-bottom:24px}
+  .riqueza-total-label{font-size:11px;letter-spacing:2px;color:rgba(201,168,76,.5);margin-bottom:6px}
+  .riqueza-total-val{font-family:'Bebas Neue',sans-serif;font-size:40px;color:#C9A84C}
+  .riqueza-total-sub{font-size:12px;color:rgba(226,221,212,.3);margin-top:4px}
+
+  /* Insight */
+  .insight-box{text-align:center;font-style:italic;font-size:15px;color:rgba(226,221,212,.55);line-height:1.7;padding:20px 30px;margin-bottom:24px}
+
+  /* Footer */
+  .footer{text-align:center;padding:32px 0 20px;border-top:1px solid rgba(201,168,76,.1);margin-top:36px}
+  .footer-brand{font-family:'Bebas Neue',sans-serif;font-size:18px;color:rgba(201,168,76,.4);letter-spacing:4px;margin-bottom:4px}
+  .footer-text{font-size:11px;color:rgba(226,221,212,.2)}
+
+  /* Print overrides */
+  @media print{
+    body{background:#07090F !important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .page{padding:20px 30px}
+    .idea-card{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Cover -->
+  <div class="cover">
+    <div class="cover-brand">V.I.S.O.R.</div>
+    <div class="cover-sub">RELATÓRIO DE RIQUEZA VISIONÁRIA</div>
+    <div class="cover-name">${data.nome}</div>
+    <div class="cover-setor">${setor}</div>
+    <div class="cover-date">${new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" })}</div>
+  </div>
+
+  <!-- Market -->
+  ${tam ? `
+  <div class="market-section">
+    <div class="market-title">SEU MERCADO</div>
+    <div class="market-row">
+      <div class="market-stat">
+        <div class="market-stat-label">Setor</div>
+        <div class="market-stat-val" style="font-size:18px">${setor}</div>
+      </div>
+      <div class="market-stat">
+        <div class="market-stat-label">Tamanho de mercado</div>
+        <div class="market-stat-val">${tam}/ano</div>
+      </div>
+    </div>
+  </div>
+  ` : ""}
+
+  <!-- Scores -->
+  <div class="section-title">DIAGNÓSTICO</div>
+  <div class="scores-row">
+    <div class="score-box atual-box">
+      <div class="score-label atual">SITUAÇÃO ATUAL</div>
+      <div class="score-num atual">${diagnose.scores.score_atual}</div>
+      <div class="score-items">
+        ${diagnose.scores.bloqueios.map(b => `<div class="score-item">${b}</div>`).join("")}
+      </div>
+    </div>
+    <div class="score-box vis-box">
+      <div class="score-label vis">POTENCIAL VISIONÁRIO</div>
+      <div class="score-num vis">${diagnose.scores.score_visionario}</div>
+      <div class="score-items">
+        ${diagnose.scores.potenciais.map(p => `<div class="score-item">${p}</div>`).join("")}
+      </div>
+    </div>
+  </div>
+
+  <div class="riqueza-total">
+    <div class="riqueza-total-label">RIQUEZA TOTAL DESBLOQUEÁVEL</div>
+    <div class="riqueza-total-val">${totalRiqueza}</div>
+    <div class="riqueza-total-sub">por ano · soma das 3 ideias</div>
+  </div>
+
+  ${diagnose.insight ? `<div class="insight-box">"${diagnose.insight}"</div>` : ""}
+
+  <!-- 3 Ideas -->
+  <div class="section-title">SUAS 3 IDEIAS DE RIQUEZA</div>
+  ${ideaCards}
+
+  <!-- Plan -->
+  <div class="section-title">PLANO DE AÇÃO — 90 DIAS</div>
+  <div class="plan-grid">
+    <div class="plan-item">
+      <div class="plan-item-label">SEMANAS 1-2</div>
+      <div class="plan-item-text">${diagnose.plano.semanas_1_2}</div>
+    </div>
+    <div class="plan-item">
+      <div class="plan-item-label">SEMANAS 3-4</div>
+      <div class="plan-item-text">${diagnose.plano.semanas_3_4}</div>
+    </div>
+    <div class="plan-item">
+      <div class="plan-item-label">MÊS 2</div>
+      <div class="plan-item-text">${diagnose.plano.mes_2}</div>
+    </div>
+    <div class="plan-item">
+      <div class="plan-item-label">MÊS 3</div>
+      <div class="plan-item-text">${diagnose.plano.mes_3}</div>
+    </div>
+    <div class="plan-item full">
+      <div class="plan-item-label">DEDICAÇÃO RECOMENDADA</div>
+      <div class="plan-item-text">${diagnose.plano.horas_semana}h por semana</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-brand">V.I.S.O.R.</div>
+    <div class="footer-text">Método V.I.S.O.R. por Pedro Superti · Calculadora Visionária 2026</div>
+    <div class="footer-text" style="margin-top:4px">Este relatório é pessoal e confidencial. Gerado em ${new Date().toLocaleDateString("pt-BR")}</div>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const w = window.open("", "_blank");
+  if (w) {
+    w.document.write(html);
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  }
+}
+
 
 // Map step to previous step for back navigation
 function prevStep(step: WizardStep): WizardStep | null {
@@ -1201,6 +1458,14 @@ export default function Calculator() {
                       </button>
                     </a>
 
+                    <button
+                      className="btn-sec"
+                      style={{ width: "100%", marginTop: 10 }}
+                      onClick={() => generatePDFReport(data, diagnoseResult, "hot")}
+                    >
+                      SALVAR MEU RELATÓRIO COMPLETO (PDF)
+                    </button>
+
                     <div className="elegivel-vagas">
                       Vagas limitadas. Apenas {leadResult?.topPercent || 8}% dos perfis analisados recebem essa oferta.
                     </div>
@@ -1242,9 +1507,9 @@ export default function Calculator() {
                     <button
                       className="btn-sec"
                       style={{ width: "100%", marginTop: 10 }}
-                      onClick={() => window.print()}
+                      onClick={() => generatePDFReport(data, diagnoseResult, tier as "hot" | "warm" | "cold")}
                     >
-                      SALVAR MEU PLANO (PDF)
+                      SALVAR MEU RELATÓRIO COMPLETO (PDF)
                     </button>
                   </>
                 )}
@@ -1279,9 +1544,9 @@ export default function Calculator() {
 
                     <button
                       className="btn-drill"
-                      onClick={() => window.print()}
+                      onClick={() => generatePDFReport(data, diagnoseResult, "cold")}
                     >
-                      SALVAR MEU PLANO COMPLETO (PDF)
+                      SALVAR MEU RELATÓRIO COMPLETO (PDF)
                     </button>
 
                     <div className="nurture-upgrade">
