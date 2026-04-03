@@ -218,7 +218,7 @@ export default function AdminDashboard() {
             </div>
 
             <a
-              href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Oi ${selectedLead.nome || ""}, tudo bem? Vi que você usou a Calculadora V.I.S.O.R. e seu perfil chamou atenção. Posso te fazer umas perguntas rápidas?`)}`}
+              href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Oi ${selectedLead.nome || ""}, tudo bem? Me chamo Alê. Sou da equipe do Pedro Superti. Vi que você usou a Calculadora V.I.S.O.R. e seu perfil chamou atenção. Posso te fazer umas perguntas rápidas?`)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="admin-whatsapp-btn"
