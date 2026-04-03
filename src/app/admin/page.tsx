@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, CartesianGrid,
+  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, FunnelChart, Funnel, LabelList,
 } from "recharts";
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -216,6 +216,37 @@ export default function AdminDashboard() {
     }));
   }, [leads]);
 
+  // Conversion funnel
+  const funnelData = useMemo(() => [
+    { name: "Leads", value: stats.total, fill: "#C9A84C" },
+    { name: "Contactados", value: stats.contacted, fill: "#A78BFA" },
+    { name: "Aplicaram", value: stats.applied, fill: "#00E5FF" },
+    { name: "Agendaram", value: stats.scheduled, fill: "#22C55E" },
+  ], [stats]);
+
+  // Urgência distribution
+  const urgChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    leads.forEach((l) => {
+      const u = l.urgencia || "N/A";
+      map[u] = (map[u] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .map(([urgencia, count]) => ({ urgencia: urgencia.slice(0, 22), count }));
+  }, [leads]);
+
+  // Hot leads not contacted within 1h
+  const hotAlerts = useMemo(() => {
+    const oneHourAgo = Date.now() - 3600000;
+    return leads.filter(
+      (l) =>
+        l.tier === "hot" &&
+        (!l.contact_status || l.contact_status === "novo") &&
+        new Date(l.created_at).getTime() < oneHourAgo
+    );
+  }, [leads]);
+
   // ─── ACTIONS ──────────────────────────────────────────────────────────────
 
   const updateLead = async (id: number, data: { contact_status?: string; notes?: string }) => {
@@ -311,6 +342,18 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Alert banner for hot leads not contacted */}
+      {hotAlerts.length > 0 && (
+        <div className="adm-alert">
+          <span className="adm-alert-icon">!</span>
+          <span>{hotAlerts.length} lead{hotAlerts.length > 1 ? "s" : ""} HOT sem contato há mais de 1h:</span>
+          <span className="adm-alert-names">
+            {hotAlerts.slice(0, 3).map((l) => l.nome || "Sem nome").join(", ")}
+            {hotAlerts.length > 3 && ` +${hotAlerts.length - 3}`}
+          </span>
+        </div>
+      )}
+
       {/* ═══ ANALYTICS TAB ═══ */}
       {tab === "analytics" && (
         <div className="adm-analytics">
@@ -373,7 +416,38 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Row 3: Top Markets */}
+          {/* Row 3: Funnel + Urgência */}
+          <div className="adm-chart-row">
+            <div className="adm-chart-card">
+              <div className="adm-chart-title">FUNIL DE CONVERSÃO</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <FunnelChart>
+                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
+                  <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                    <LabelList position="center" fill="#fff" fontSize={12} formatter={(v: unknown) => (Number(v) > 0 ? String(v) : "")} />
+                  </Funnel>
+                </FunnelChart>
+              </ResponsiveContainer>
+              <div className="adm-funnel-labels">
+                {funnelData.map((d, i) => (
+                  <span key={i} style={{ color: d.fill }}>{d.name}</span>
+                ))}
+              </div>
+            </div>
+            <div className="adm-chart-card">
+              <div className="adm-chart-title">POR URGÊNCIA</div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={urgChart} layout="vertical">
+                  <XAxis type="number" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 11 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="urgencia" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 10 }} width={130} />
+                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
+                  <Bar dataKey="count" fill="#A78BFA" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Row 4: Top Markets */}
           <div className="adm-chart-card full">
             <div className="adm-chart-title">TOP MERCADOS</div>
             <div className="adm-markets">
@@ -476,6 +550,47 @@ export default function AdminDashboard() {
                   <span className={`adm-card-tier ${selectedLead.tier}`}>{(selectedLead.tier || "warm").toUpperCase()}</span>
                   {selectedLead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
                   <span className="adm-modal-time">{selectedLead.created_at ? timeAgo(selectedLead.created_at) : ""} atrás</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Score bar */}
+            <div className="adm-scorebar">
+              <div className="adm-scorebar-fill" style={{ width: `${Math.min(selectedLead.internal_score || 0, 100)}%`, background: TIER_COLORS[(selectedLead.tier || "warm") as keyof typeof TIER_COLORS] }} />
+              <div className="adm-scorebar-marks">
+                <span style={{ left: "40%" }}>40</span>
+                <span style={{ left: "70%" }}>70</span>
+              </div>
+            </div>
+
+            {/* Lead timeline */}
+            <div className="adm-timeline">
+              <div className="adm-timeline-item done">
+                <div className="adm-timeline-dot" />
+                <div className="adm-timeline-text">
+                  <strong>Calculadora V.I.S.O.R.</strong>
+                  <span>{selectedLead.created_at ? new Date(selectedLead.created_at).toLocaleString("pt-BR") : "—"}</span>
+                </div>
+              </div>
+              <div className={`adm-timeline-item${selectedLead.contact_status && selectedLead.contact_status !== "novo" ? " done" : ""}`}>
+                <div className="adm-timeline-dot" />
+                <div className="adm-timeline-text">
+                  <strong>Contato realizado</strong>
+                  <span>{selectedLead.contact_status && selectedLead.contact_status !== "novo" ? CONTACT_LABELS[selectedLead.contact_status] : "Pendente"}</span>
+                </div>
+              </div>
+              <div className={`adm-timeline-item${selectedLead.formsapp_completed ? " done" : ""}`}>
+                <div className="adm-timeline-dot" />
+                <div className="adm-timeline-text">
+                  <strong>Aplicação Forms.app</strong>
+                  <span>{selectedLead.formsapp_completed ? (selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : "Sim") : "Pendente"}</span>
+                </div>
+              </div>
+              <div className={`adm-timeline-item${selectedLead.contact_status === "agendou" ? " done" : ""}`}>
+                <div className="adm-timeline-dot" />
+                <div className="adm-timeline-text">
+                  <strong>Sessão agendada</strong>
+                  <span>{selectedLead.contact_status === "agendou" ? "Confirmado" : "Pendente"}</span>
                 </div>
               </div>
             </div>
