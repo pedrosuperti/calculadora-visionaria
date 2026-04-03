@@ -678,8 +678,8 @@ input[type=range]::-moz-range-track{height:3px;background:rgba(201,168,76,.1);bo
 /* Info tooltip balloon */
 .adm-info-tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:rgba(255,255,255,.08);color:rgba(226,221,212,.35);font-size:9px;font-style:italic;font-weight:600;cursor:help;margin-left:5px;vertical-align:middle;transition:all .2s;position:relative}
 .adm-info-tip:hover{background:rgba(201,168,76,.25);color:#C9A84C}
-.adm-info-balloon{display:none;position:absolute;bottom:calc(100% + 10px);left:50%;transform:translateX(-50%);width:240px;max-width:min(240px,80vw);padding:12px 14px;background:#1A1F2B;border:1px solid rgba(201,168,76,.25);color:rgba(226,221,212,.8);font-size:13px;font-style:normal;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;text-align:left;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);pointer-events:none}
-.adm-info-balloon::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1A1F2B}
+.adm-info-balloon{display:none;position:absolute;top:calc(100% + 10px);left:50%;transform:translateX(-50%);width:240px;max-width:min(240px,80vw);padding:12px 14px;background:#1A1F2B;border:1px solid rgba(201,168,76,.25);color:rgba(226,221,212,.8);font-size:13px;font-style:normal;font-weight:400;line-height:1.5;letter-spacing:0;text-transform:none;text-align:left;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);pointer-events:none}
+.adm-info-balloon::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:#1A1F2B}
 .adm-info-tip:hover .adm-info-balloon{display:block}
 
 /* ─── ANALYTICS TAB ─── */
