@@ -35,7 +35,17 @@ REGRAS OBRIGATÓRIAS:
    - NÃO invente aplicações absurdas, fantasiosas ou que misturem o negócio com contextos incompatíveis (ex: usar animais para segurança high-tech, terapia com espécies exóticas em hospitais, etc.)
    - As ideias devem ser DIFERENCIADAS mas CRÍVEIS — algo que um consultor sério recomendaria.
 5. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança. Baseie-se em benchmarks reais do setor.
-6. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
+6. LINGUAGEM — REGRA CRÍTICA para TODO o JSON (ideias, plano, bloqueios, potenciais, insight):
+   - O público são empreendedores TRADICIONAIS (donos de padaria, dentistas, confeiteiras, advogados). NÃO são pessoas de tech.
+   - PROIBIDO qualquer termo técnico: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark", "no-code", "protótipo", "beta", "plataforma", "automação", "Teachable Machine", "API", "machine learning", "algoritmo", "SaaS", "marketplace digital", "escola digital", "e-commerce".
+   - Em vez de "criar protótipo da plataforma", diga "montar a primeira versão do serviço".
+   - Em vez de "lançar versão beta", diga "abrir para os primeiros clientes testarem".
+   - Em vez de "automatizar processo", diga "fazer o sistema funcionar sozinho".
+   - Em vez de "IA generativa", diga "inteligência artificial" ou "tecnologia".
+   - Em vez de "escola digital", diga "curso online" ou "treinamento online".
+   - Em vez de "marketplace", diga "loja" ou "vitrine online".
+   - Fale como se estivesse explicando para um amigo que não entende nada de tecnologia. Se uma criança de 12 anos não entenderia a frase, REESCREVA.
+   - O tom deve ser ENCORAJADOR — a pessoa deve pensar "consigo fazer isso!", não "isso é complicado demais".
 7. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
 8. Os scores devem refletir análise real e VARIAR de pessoa para pessoa:
    - score_atual (20-50): baseado nas dores selecionadas, faturamento implícito e distância até o potencial. Mais dores = score mais baixo.
