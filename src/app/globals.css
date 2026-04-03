@@ -643,6 +643,11 @@ input[type=range]::-moz-range-track{height:3px;background:rgba(201,168,76,.1);bo
 .adm-side-foot{margin-top:auto;padding-top:16px}
 .adm-nav.logout{color:rgba(239,68,68,.5)}
 .adm-nav.logout:hover{color:#EF4444}
+.adm-nav-group{margin-top:4px}
+.adm-nav-label{font-size:14px;color:rgba(226,221,212,.25);letter-spacing:.5px;padding:10px 14px 4px;cursor:default}
+.adm-nav-label.active{color:rgba(201,168,76,.5)}
+.adm-nav.sub{padding-left:28px;font-size:13px}
+.adm-side-overlay{display:none}
 @media(max-width:768px){
   .adm-side{width:0;overflow:hidden;padding:0;border:none;position:fixed;z-index:9998;height:100vh;transition:width .2s,padding .2s}
   .adm-side.open{width:200px;padding:24px 16px;border-right:1px solid rgba(201,168,76,.08);background:#07090F}

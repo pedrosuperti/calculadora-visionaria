@@ -152,7 +152,7 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [authed, fetchLeads]);
 
-  const [page, setPage] = useState<"home" | "leads" | "analytics">("home");
+  const [page, setPage] = useState<"home" | "leads" | "analytics-leads" | "analytics-calc">("home");
   const [sideOpen, setSideOpen] = useState(false);
   const [calcEvents, setCalcEvents] = useState<CalcEvent[]>([]);
 
@@ -164,7 +164,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (authed && page === "analytics" && calcEvents.length === 0) fetchCalcAnalytics();
+    if (authed && page === "analytics-calc" && calcEvents.length === 0) fetchCalcAnalytics();
   }, [authed, page, calcEvents.length, fetchCalcAnalytics]);
 
   // ─── DERIVED DATA ─────────────────────────────────────────────────────────
@@ -531,7 +531,11 @@ export default function AdminDashboard() {
         <nav className="adm-side-nav">
           <button className={`adm-nav${page === "home" ? " active" : ""}`} onClick={() => { setPage("home"); setSideOpen(false); }}>Dashboard</button>
           <button className={`adm-nav${page === "leads" ? " active" : ""}`} onClick={() => { setPage("leads"); setSideOpen(false); }}>Leads</button>
-          <button className={`adm-nav${page === "analytics" ? " active" : ""}`} onClick={() => { setPage("analytics"); setSideOpen(false); }}>Analytics</button>
+          <div className="adm-nav-group">
+            <div className={`adm-nav-label${page.startsWith("analytics") ? " active" : ""}`}>Analytics</div>
+            <button className={`adm-nav sub${page === "analytics-leads" ? " active" : ""}`} onClick={() => { setPage("analytics-leads"); setSideOpen(false); }}>Leads</button>
+            <button className={`adm-nav sub${page === "analytics-calc" ? " active" : ""}`} onClick={() => { setPage("analytics-calc"); setSideOpen(false); }}>Calculadora</button>
+          </div>
         </nav>
         <div className="adm-side-actions">
           <a href="/api/admin/leads/export" className="adm-nav" download>Exportar CSV</a>
@@ -693,9 +697,10 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* ═══ ANALYTICS PAGE ═══ */}
-        {page === "analytics" && (
+        {/* ═══ ANALYTICS: LEADS ═══ */}
+        {page === "analytics-leads" && (
           <div className="adm-analytics">
+            <div className="adm-section-title">ANALYTICS DE LEADS</div>
             <div className="adm-chart-row">
               <div className="adm-chart-card wide">
                 <div className="adm-chart-title">LEADS POR DIA (14 DIAS)</div>
@@ -826,8 +831,12 @@ export default function AdminDashboard() {
                 </div>
               </div>
             )}
-            {/* ═══ CALCULATOR ANALYTICS ═══ */}
-            <div className="adm-section-divider" />
+          </div>
+        )}
+
+        {/* ═══ ANALYTICS: CALCULADORA ═══ */}
+        {page === "analytics-calc" && (
+          <div className="adm-analytics">
             <div className="adm-section-title">ANALYTICS DA CALCULADORA</div>
 
             {/* Calc KPIs */}
@@ -838,10 +847,10 @@ export default function AdminDashboard() {
               <div className="adm-kpi accent"><div className="adm-kpi-num">{calcStats.completionRate}%</div><div className="adm-kpi-label">Taxa Conclusão <InfoTip text="Porcentagem de quem abriu a calculadora e chegou até o final." /></div></div>
             </div>
 
-            {/* Row: Views per day + Step funnel */}
+            {/* Row: Views per day + Devices */}
             <div className="adm-chart-row">
               <div className="adm-chart-card wide">
-                <div className="adm-chart-title">ACESSOS POR DIA (14 DIAS)</div>
+                <div className="adm-chart-title">📈 ACESSOS POR DIA (14 DIAS)</div>
                 <ResponsiveContainer width="100%" height={220}>
                   <LineChart data={calcDailyChart}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
@@ -853,7 +862,7 @@ export default function AdminDashboard() {
                 </ResponsiveContainer>
               </div>
               <div className="adm-chart-card">
-                <div className="adm-chart-title">POR DISPOSITIVO</div>
+                <div className="adm-chart-title">📱 POR DISPOSITIVO</div>
                 <ResponsiveContainer width="100%" height={220}>
                   <PieChart>
                     <Pie data={deviceChart} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
@@ -867,7 +876,7 @@ export default function AdminDashboard() {
 
             {/* Step funnel - full width */}
             <div className="adm-chart-card full">
-              <div className="adm-chart-title">FUNIL POR ETAPA (QUANTOS CHEGARAM EM CADA STEP)</div>
+              <div className="adm-chart-title">🔻 FUNIL POR ETAPA (DROP-OFF)</div>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart data={stepFunnel}>
                   <XAxis dataKey="step" tick={tickSmall} interval={0} angle={-30} textAnchor="end" height={60} />
@@ -881,7 +890,7 @@ export default function AdminDashboard() {
             {/* Row: Browser + OS */}
             <div className="adm-chart-row">
               <div className="adm-chart-card">
-                <div className="adm-chart-title">POR NAVEGADOR</div>
+                <div className="adm-chart-title">🌐 POR NAVEGADOR</div>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={browserChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
@@ -892,7 +901,7 @@ export default function AdminDashboard() {
                 </ResponsiveContainer>
               </div>
               <div className="adm-chart-card">
-                <div className="adm-chart-title">POR SISTEMA OPERACIONAL</div>
+                <div className="adm-chart-title">💻 POR SISTEMA OPERACIONAL</div>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={osChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
@@ -907,7 +916,7 @@ export default function AdminDashboard() {
             {/* Language */}
             {langChart.length > 0 && (
               <div className="adm-chart-card full">
-                <div className="adm-chart-title">POR IDIOMA</div>
+                <div className="adm-chart-title">🗣️ POR IDIOMA</div>
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={langChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
