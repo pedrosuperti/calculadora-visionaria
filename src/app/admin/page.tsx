@@ -623,6 +623,7 @@ export default function AdminDashboard() {
   const tooltipStyle = { background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" };
   const tickStyle = { fill: "rgba(226,221,212,.4)", fontSize: 11 };
   const tickSmall = { fill: "rgba(226,221,212,.4)", fontSize: 10 };
+  const tickEmoji = { fill: "rgba(226,221,212,.6)", fontSize: 14 };
 
   return (
     <div className="adm">
@@ -994,10 +995,10 @@ export default function AdminDashboard() {
             <div className="adm-chart-row">
               <div className="adm-chart-card">
                 <div className="adm-chart-title">🌐 POR NAVEGADOR</div>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={browserChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={tickSmall} width={120} />
+                    <YAxis type="category" dataKey="name" tick={tickEmoji} width={140} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="value" fill="#A78BFA" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -1005,10 +1006,10 @@ export default function AdminDashboard() {
               </div>
               <div className="adm-chart-card">
                 <div className="adm-chart-title">💻 POR SISTEMA OPERACIONAL</div>
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={220}>
                   <BarChart data={osChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={tickSmall} width={120} />
+                    <YAxis type="category" dataKey="name" tick={tickEmoji} width={140} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="value" fill="#22C55E" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -1020,10 +1021,10 @@ export default function AdminDashboard() {
             {langChart.length > 0 && (
               <div className="adm-chart-card full">
                 <div className="adm-chart-title">🗣️ POR IDIOMA</div>
-                <ResponsiveContainer width="100%" height={180}>
+                <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={langChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
-                    <YAxis type="category" dataKey="lang" tick={tickSmall} width={110} />
+                    <YAxis type="category" dataKey="lang" tick={tickEmoji} width={130} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="count" fill="#00E5FF" radius={[0, 4, 4, 0]} />
                   </BarChart>
