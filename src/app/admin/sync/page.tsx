@@ -313,7 +313,11 @@ export default function SyncPage() {
         body: JSON.stringify({ submissions: parsed }),
       });
       const data = await res.json();
-      setImportResult(data);
+      if (data.error) {
+        alert("Erro: " + data.error);
+      } else {
+        setImportResult(data);
+      }
       fetchUnmatched();
     } catch (e) {
       alert("Erro ao importar: " + String(e));
@@ -328,7 +332,11 @@ export default function SyncPage() {
     try {
       const res = await fetch("/api/admin/formsapp-sync", { method: "POST" });
       const data = await res.json();
-      setSyncResult(data);
+      if (data.error) {
+        alert("Erro: " + data.error);
+      } else {
+        setSyncResult(data);
+      }
       fetchUnmatched();
     } catch (e) {
       console.error("Sync error:", e);
