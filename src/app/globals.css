@@ -266,6 +266,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .step-subtitle{font-size:16px;color:rgba(226,221,212,.65);line-height:1.6;margin-bottom:22px}
 
 /* ─── STEP 0: LANDING ─── */
+/* Landing author */
+.landing-author{display:flex;align-items:center;gap:12px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid rgba(201,168,76,.12)}
+.landing-author-img{width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(201,168,76,.35)}
+.landing-author-info{display:flex;flex-direction:column}
+.landing-author-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:#E2DDD4}
+.landing-author-role{font-size:12px;color:rgba(201,168,76,.7);letter-spacing:0.5px}
+
 .landing-title{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;color:#C9A84C;text-align:center;line-height:1.1;margin-bottom:10px}
 @media(min-width:420px){.landing-title{font-size:38px;letter-spacing:4px}}
 .landing-subtitle{font-size:16px;color:rgba(226,221,212,.65);text-align:center;line-height:1.6;margin-bottom:24px;max-width:480px;margin-left:auto;margin-right:auto}

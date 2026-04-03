@@ -471,18 +471,26 @@ export default function Calculator() {
           {/* ════════ STEP 0: LANDING ════════ */}
           {step === 0 && (
             <div className="step-content">
-              <div className="landing-title">CALCULADORA DE RIQUEZA VISIONÁRIA</div>
+              <div className="landing-author">
+                <img className="landing-author-img" src="https://pedrosuperti.com.br/wp-content/uploads/2024/01/pedro-superti-perfil.webp" alt="Pedro Superti" />
+                <div className="landing-author-info">
+                  <div className="landing-author-name">Pedro Superti</div>
+                  <div className="landing-author-role">Criador do Método VISOR</div>
+                </div>
+              </div>
+
+              <div className="landing-title">QUANTA RIQUEZA ESTÁ ESCONDIDA NO SEU NEGÓCIO?</div>
               <div className="landing-subtitle">
-                Descubra quanta riqueza está escondida no seu mercado — e como desbloquear em 90 dias
+                Nosso método exclusivo VISOR encontra oportunidades milionárias escondidas dentro do seu mercado
               </div>
 
               <div className="comparison-context">
-                Veja a diferença entre quem opera no modo tradicional e quem usa o método Visionário:
+                Esse é o salto que acontece quando você enxerga o que ninguém mais vê:
               </div>
 
               <div className="comparison-card">
                 <div className="comparison-col bloqueada">
-                  <div className="comparison-col-title">RIQUEZA BLOQUEADA</div>
+                  <div className="comparison-col-title">ONDE VOCÊ ESTÁ</div>
                   {[
                     ["Faturamento", "R$15k/mês", "📉"],
                     ["Margem", "22%", "😰"],
@@ -497,7 +505,7 @@ export default function Calculator() {
                   ))}
                 </div>
                 <div className="comparison-col desbloqueada">
-                  <div className="comparison-col-title">RIQUEZA DESBLOQUEADA</div>
+                  <div className="comparison-col-title">ONDE PODE CHEGAR</div>
                   {[
                     ["Faturamento", "R$85k/mês", "📈"],
                     ["Margem", "61%", "🎯"],
@@ -514,14 +522,14 @@ export default function Calculator() {
               </div>
 
               <div className="time-badge">
-                Em 3 minutos, a IA vai mapear 3 oportunidades escondidas no seu mercado.
+                Em 3 minutos você vai descobrir oportunidades que levariam meses para encontrar sozinho.
               </div>
 
               <div className="f">
-                <label>Qual é o seu primeiro nome?</label>
+                <label>Como posso te chamar?</label>
                 <input
                   type="text"
-                  placeholder="Ex: Pedro"
+                  placeholder="Seu primeiro nome"
                   value={data.nome}
                   onChange={(e) => set("nome", e.target.value)}
                 />
@@ -1167,7 +1175,7 @@ export default function Calculator() {
         </div>
       </div>
 
-      <div className="ftag">Pedro Superti · Calculadora de Riqueza Visionária</div>
+      <div className="ftag">Calculadora Visionária 2026 · Pedro Superti</div>
     </div>
   );
 }

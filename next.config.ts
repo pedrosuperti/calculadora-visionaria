@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       { hostname: "i.pravatar.cc" },
+      { hostname: "pedrosuperti.com.br" },
     ],
   },
 };
