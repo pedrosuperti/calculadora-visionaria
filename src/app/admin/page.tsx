@@ -1075,8 +1075,8 @@ export default function AdminDashboard() {
               </ComposableMap>
             </div>
 
-            {/* Row: Countries + States */}
-            <div className="adm-chart-row">
+            {/* Row: Countries + States + Cities — 3 columns */}
+            <div className="adm-geo-row-3">
               <div className="adm-chart-card">
                 <div className="adm-chart-title">🏳️ POR PAÍS</div>
                 {countryChart.length === 0 ? (
@@ -1112,24 +1112,24 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
-            </div>
-
-            {/* Cities */}
-            {cityChart.length > 0 && (
-              <div className="adm-chart-card full">
+              <div className="adm-chart-card">
                 <div className="adm-chart-title">🏙️ TOP CIDADES</div>
-                <div className="adm-geo-list">
-                  {cityChart.map((c, i) => (
-                    <div key={i} className="adm-geo-row">
-                      <span className="adm-geo-rank">#{i + 1}</span>
-                      <span className="adm-geo-name">{c.city}</span>
-                      <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${(c.count / (cityChart[0]?.count || 1)) * 100}%`, background: "linear-gradient(90deg,#00E5FF,rgba(0,229,255,.4))" }} /></div>
-                      <span className="adm-market-count">{c.count}</span>
-                    </div>
-                  ))}
-                </div>
+                {cityChart.length === 0 ? (
+                  <div className="adm-empty-sm">Sem dados de cidade ainda</div>
+                ) : (
+                  <div className="adm-geo-list">
+                    {cityChart.map((c, i) => (
+                      <div key={i} className="adm-geo-row">
+                        <span className="adm-geo-rank">#{i + 1}</span>
+                        <span className="adm-geo-name">{c.city}</span>
+                        <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${(c.count / (cityChart[0]?.count || 1)) * 100}%`, background: "linear-gradient(90deg,#00E5FF,rgba(0,229,255,.4))" }} /></div>
+                        <span className="adm-market-count">{c.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
 

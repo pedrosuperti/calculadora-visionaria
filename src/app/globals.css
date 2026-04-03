@@ -867,6 +867,11 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;-webkit-overflow-scrol
 .adm-status-btns{position:relative;-webkit-overflow-scrolling:touch}
 @media(max-width:400px){.adm-status-btns{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}}
 
+/* Geo 3-column row */
+.adm-geo-row-3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:1000px){.adm-geo-row-3{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.adm-geo-row-3{grid-template-columns:1fr}}
+
 /* Geo list */
 .adm-geo-list{display:flex;flex-direction:column;gap:10px}
 .adm-geo-row{display:flex;align-items:center;gap:8px}
