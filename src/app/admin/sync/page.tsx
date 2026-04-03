@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 interface SyncResult {
   unmatched_id?: number;
@@ -20,10 +20,192 @@ interface UnmatchedSub {
   created_at: string;
 }
 
+interface ParsedSubmission {
+  answers: { title: string; value: string }[];
+  createdAt?: string;
+  submissionId?: string;
+  [key: string]: unknown;
+}
+
+// ─── FIELD NAMES from Forms.app ───
+const FORMSAPP_FIELDS = [
+  "Nome Completo",
+  "Principal E-mail",
+  "Telefone",
+  "Nome de sua empresa",
+  "Quantos Funcionários",
+  "Faturamento mensal",
+  "Seu site",
+  "Instagram",
+  "Ramo de atuação",
+  "Problemas ou desafios",
+  "Urgência",
+  "Marketing",
+  "Fator X",
+  "Inteligência Artificial",
+  "Algo importante",
+];
+
+// ─── PARSERS ───
+
+function parseCSV(text: string): ParsedSubmission[] {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  // Detect separator
+  const sep = lines[0].includes("\t") ? "\t" : lines[0].includes(";") ? ";" : ",";
+
+  function splitRow(line: string): string[] {
+    const cols: string[] = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === sep && !inQuotes) {
+        cols.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    cols.push(current.trim());
+    return cols;
+  }
+
+  const headers = splitRow(lines[0]);
+  const results: ParsedSubmission[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitRow(lines[i]);
+    if (cols.length < 3) continue;
+    const answers: { title: string; value: string }[] = [];
+    let createdAt = "";
+    let submissionId = "";
+    for (let j = 0; j < headers.length; j++) {
+      const h = headers[j].toLowerCase();
+      const v = cols[j] || "";
+      if (h.includes("data") && h.includes("envio")) {
+        createdAt = v;
+      } else if (h.includes("id") && h.includes("envio")) {
+        submissionId = v;
+      } else if (v) {
+        answers.push({ title: headers[j], value: v });
+      }
+    }
+    results.push({ answers, createdAt, submissionId });
+  }
+  return results;
+}
+
+function parseFormsAppText(text: string): ParsedSubmission[] {
+  // Split by submission ID pattern (hex string at end of each record)
+  // Each record ends with a date line then an ID line
+  const dateIdPattern = /(\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M)\s*\n\s*([a-f0-9]{10,})/g;
+
+  const records: { text: string; date: string; id: string }[] = [];
+  let lastEnd = 0;
+  let match;
+
+  while ((match = dateIdPattern.exec(text)) !== null) {
+    const recordText = text.slice(lastEnd, match.index).trim();
+    if (recordText.length > 10) {
+      records.push({ text: recordText, date: match[1], id: match[2] });
+    }
+    lastEnd = match.index + match[0].length;
+  }
+
+  if (records.length === 0) return [];
+
+  const results: ParsedSubmission[] = [];
+
+  for (const rec of records) {
+    // Split the record text into lines
+    const lines = rec.text.split("\n").map((l) => l.trim()).filter(Boolean);
+
+    // Remove page markers like "1 - 50 of 57" or "51 - 57 of 57" or just "1" or "2"
+    const cleanLines = lines.filter((l) => !(/^\d+\s*-\s*\d+\s+of\s+\d+$/.test(l)) && !(/^\d{1,2}$/.test(l)));
+
+    // Map lines to fields (best effort — fields are in order)
+    const answers: { title: string; value: string }[] = [];
+    for (let i = 0; i < Math.min(cleanLines.length, FORMSAPP_FIELDS.length); i++) {
+      if (cleanLines[i]) {
+        answers.push({ title: FORMSAPP_FIELDS[i], value: cleanLines[i] });
+      }
+    }
+
+    results.push({ answers, createdAt: rec.date, submissionId: rec.id });
+  }
+
+  return results;
+}
+
+function parseJSON(text: string): ParsedSubmission[] {
+  const parsed = JSON.parse(text);
+  const arr = Array.isArray(parsed) ? parsed : [parsed];
+  return arr.map((item) => {
+    if (item.answers && Array.isArray(item.answers)) return item;
+    // Wrap raw object as a submission
+    const answers: { title: string; value: string }[] = [];
+    for (const [k, v] of Object.entries(item)) {
+      if (v && typeof v === "string") answers.push({ title: k, value: v });
+    }
+    return { answers, createdAt: item.createdAt || item.created_at };
+  });
+}
+
+function detectAndParse(text: string): { submissions: ParsedSubmission[]; format: string } {
+  const trimmed = text.trim();
+
+  // Try JSON first
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      return { submissions: parseJSON(trimmed), format: "JSON" };
+    } catch { /* not JSON */ }
+  }
+
+  // Check for CSV (has header line with commas/tabs/semicolons + consistent columns)
+  const firstLine = trimmed.split("\n")[0];
+  const hasCsvHeader = firstLine.includes(",") || firstLine.includes("\t") || firstLine.includes(";");
+  const looksLikeCsv = hasCsvHeader && (
+    firstLine.toLowerCase().includes("nome") ||
+    firstLine.toLowerCase().includes("email") ||
+    firstLine.toLowerCase().includes("telefone")
+  );
+
+  if (looksLikeCsv) {
+    const parsed = parseCSV(trimmed);
+    if (parsed.length > 0) return { submissions: parsed, format: "CSV" };
+  }
+
+  // Try Forms.app text format (has date + hex ID pattern)
+  const hasFormsPattern = /\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M\s*\n\s*[a-f0-9]{10,}/.test(trimmed);
+  if (hasFormsPattern) {
+    const parsed = parseFormsAppText(trimmed);
+    if (parsed.length > 0) return { submissions: parsed, format: "Texto Forms.app" };
+  }
+
+  // Last resort: try CSV anyway
+  const csvAttempt = parseCSV(trimmed);
+  if (csvAttempt.length > 0) return { submissions: csvAttempt, format: "CSV" };
+
+  return { submissions: [], format: "desconhecido" };
+}
+
+// ─── COMPONENT ───
+
 export default function SyncPage() {
   const [authed, setAuthed] = useState(false);
   const [pw, setPw] = useState("");
-  const [jsonInput, setJsonInput] = useState("");
+  const [textInput, setTextInput] = useState("");
+  const [parsed, setParsed] = useState<ParsedSubmission[]>([]);
+  const [detectedFormat, setDetectedFormat] = useState("");
   const [importing, setImporting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [setupDone, setSetupDone] = useState(false);
@@ -34,6 +216,8 @@ export default function SyncPage() {
   const [unmatched, setUnmatched] = useState<UnmatchedSub[]>([]);
   const [leads, setLeads] = useState<{ id: number; nome: string; whatsapp: string; formsapp_completed: boolean }[]>([]);
   const [linking, setLinking] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && sessionStorage.getItem("adm_auth") === "true") {
@@ -87,14 +271,42 @@ export default function SyncPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authed]);
 
+  // Parse input whenever text changes
+  const handleTextChange = useCallback((text: string) => {
+    setTextInput(text);
+    setImportResult(null);
+    if (text.trim().length < 20) {
+      setParsed([]);
+      setDetectedFormat("");
+      return;
+    }
+    const { submissions, format } = detectAndParse(text);
+    setParsed(submissions);
+    setDetectedFormat(format);
+  }, []);
+
+  // Handle file upload
+  const handleFile = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      if (text) handleTextChange(text);
+    };
+    reader.readAsText(file);
+  }, [handleTextChange]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFile(file);
+  }, [handleFile]);
+
   const handleImport = async () => {
-    if (!jsonInput.trim()) return;
+    if (parsed.length === 0) return;
     setImporting(true);
     setImportResult(null);
     try {
-      let parsed = JSON.parse(jsonInput);
-      // Accept both array and single object
-      if (!Array.isArray(parsed)) parsed = [parsed];
       const res = await fetch("/api/admin/formsapp-import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,7 +316,7 @@ export default function SyncPage() {
       setImportResult(data);
       fetchUnmatched();
     } catch (e) {
-      alert("JSON inválido: " + String(e));
+      alert("Erro ao importar: " + String(e));
     } finally {
       setImporting(false);
     }
@@ -155,18 +367,32 @@ export default function SyncPage() {
 
   const availableLeads = leads.filter((l) => !l.formsapp_completed);
 
+  // Get name + phone from parsed submission for preview
+  function getPreview(sub: ParsedSubmission): { name: string; phone: string } {
+    const nameField = sub.answers?.find((a) =>
+      a.title.toLowerCase().includes("nome") && !a.title.toLowerCase().includes("empresa")
+    );
+    const phoneField = sub.answers?.find((a) =>
+      a.title.toLowerCase().includes("telefone") || a.title.toLowerCase().includes("whatsapp")
+    );
+    return {
+      name: nameField?.value || sub.answers?.[0]?.value || "—",
+      phone: phoneField?.value || "—",
+    };
+  }
+
   return (
     <div className="adm-ficha">
       <div className="adm-ficha-topbar">
-        <a href="/admin" className="adm-ficha-back">← Admin</a>
-        <span className="adm-ficha-topbar-name">Sincronização Forms.app</span>
+        <a href="/admin" className="adm-ficha-back">&larr; Admin</a>
+        <span className="adm-ficha-topbar-name">Sincronizar Forms.app</span>
       </div>
       <div className="adm-ficha-content">
 
         {/* Setup status */}
         {setupSql && (
           <section className="adm-ficha-section">
-            <h2 className="adm-ficha-section-title">Setup Necessário</h2>
+            <h2 className="adm-ficha-section-title">Setup Necessario</h2>
             <p style={{ color: "#F97316", fontSize: 14, marginBottom: 12 }}>
               A tabela <code>formsapp_unmatched</code> precisa ser criada. Execute este SQL no Supabase:
             </p>
@@ -179,35 +405,124 @@ export default function SyncPage() {
 
         {(setupDone || !setupSql) && (
           <>
-            {/* Import section */}
+            {/* ─── IMPORT SECTION ─── */}
             <section className="adm-ficha-section">
-              <h2 className="adm-ficha-section-title">1. Importar Submissões do Forms.app</h2>
+              <h2 className="adm-ficha-section-title">1. Importar Respostas</h2>
               <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>
-                Exporte as respostas do Forms.app (JSON) e cole aqui. Aceita array de submissões ou uma única.
+                Cole os dados do Forms.app ou arraste um arquivo. Aceita <strong>CSV</strong>, <strong>JSON</strong>, <strong>TXT</strong>, ou <strong>texto copiado</strong> direto da tela de respostas.
               </p>
+
+              {/* Drop zone / file upload */}
+              <div
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                style={{
+                  padding: 20,
+                  border: `2px dashed ${dragOver ? "#C9A84C" : "rgba(255,255,255,.1)"}`,
+                  borderRadius: 6,
+                  textAlign: "center",
+                  cursor: "pointer",
+                  marginBottom: 12,
+                  background: dragOver ? "rgba(201,168,76,.05)" : "transparent",
+                  transition: "all .2s",
+                }}
+              >
+                <div style={{ fontSize: 24, marginBottom: 6 }}>📁</div>
+                <div style={{ fontSize: 13, color: "rgba(226,221,212,.5)" }}>
+                  Arraste um arquivo aqui ou <span style={{ color: "#C9A84C", textDecoration: "underline" }}>clique para selecionar</span>
+                </div>
+                <div style={{ fontSize: 11, color: "rgba(226,221,212,.25)", marginTop: 4 }}>.csv, .json, .txt, .xlsx</div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv,.json,.txt,.tsv,.xlsx,.xls"
+                  style={{ display: "none" }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                />
+              </div>
+
+              {/* Or paste */}
+              <div style={{ fontSize: 12, color: "rgba(226,221,212,.3)", textAlign: "center", margin: "8px 0" }}>ou cole diretamente:</div>
               <textarea
                 className="adm-notes"
-                rows={8}
-                placeholder='[{"answers": [...], ...}, ...]'
-                value={jsonInput}
-                onChange={(e) => setJsonInput(e.target.value)}
-                style={{ fontFamily: "monospace", fontSize: 12 }}
+                rows={6}
+                placeholder="Cole aqui os dados do Forms.app (qualquer formato)..."
+                value={textInput}
+                onChange={(e) => handleTextChange(e.target.value)}
+                style={{ fontFamily: "monospace", fontSize: 11 }}
               />
-              <button className="adm-btn-insights" onClick={handleImport} disabled={importing} style={{ marginTop: 8 }}>
-                {importing ? "Importando..." : "📥 Importar e Tentar Vincular"}
+
+              {/* Detection result */}
+              {detectedFormat && (
+                <div style={{ marginTop: 12, padding: 12, background: "rgba(255,255,255,.03)", borderRadius: 4, border: "1px solid rgba(255,255,255,.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ color: "#22C55E", fontSize: 16 }}>&#10003;</span>
+                    <span style={{ fontSize: 13 }}>
+                      Formato detectado: <strong style={{ color: "#C9A84C" }}>{detectedFormat}</strong>
+                      {" — "}
+                      <strong style={{ color: "#22C55E" }}>{parsed.length}</strong> submissoes encontradas
+                    </span>
+                  </div>
+
+                  {/* Preview table */}
+                  {parsed.length > 0 && (
+                    <div style={{ maxHeight: 200, overflow: "auto" }}>
+                      <table style={{ width: "100%", fontSize: 12, borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr style={{ borderBottom: "1px solid rgba(255,255,255,.1)" }}>
+                            <th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>#</th>
+                            <th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>Nome</th>
+                            <th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>Telefone</th>
+                            <th style={{ textAlign: "left", padding: "4px 8px", color: "rgba(226,221,212,.4)" }}>Data</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parsed.map((sub, i) => {
+                            const p = getPreview(sub);
+                            return (
+                              <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,.04)" }}>
+                                <td style={{ padding: "4px 8px", color: "rgba(226,221,212,.3)" }}>{i + 1}</td>
+                                <td style={{ padding: "4px 8px" }}>{p.name}</td>
+                                <td style={{ padding: "4px 8px", color: "rgba(226,221,212,.5)" }}>{p.phone}</td>
+                                <td style={{ padding: "4px 8px", color: "rgba(226,221,212,.3)", fontSize: 11 }}>{sub.createdAt || "—"}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {parsed.length === 0 && textInput.trim().length > 20 && (
+                <div style={{ marginTop: 8, color: "#EF4444", fontSize: 13 }}>
+                  Nao foi possivel detectar o formato. Tente exportar como CSV ou copiar diretamente da pagina de respostas.
+                </div>
+              )}
+
+              <button
+                className="adm-btn-insights"
+                onClick={handleImport}
+                disabled={importing || parsed.length === 0}
+                style={{ marginTop: 12, opacity: parsed.length === 0 ? 0.4 : 1 }}
+              >
+                {importing ? "Importando..." : `📥 Importar ${parsed.length} submissoes e vincular`}
               </button>
 
               {importResult && (
                 <div style={{ marginTop: 16, padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 4, fontSize: 13 }}>
                   <p>Total: <strong>{importResult.total}</strong></p>
                   <p style={{ color: "#22C55E" }}>Vinculados: <strong>{importResult.matched}</strong></p>
-                  <p style={{ color: "#EAB308" }}>Já vinculados antes: <strong>{importResult.already_matched}</strong></p>
-                  <p style={{ color: "#EF4444" }}>Não encontrados (salvos): <strong>{importResult.unmatched_stored}</strong></p>
+                  <p style={{ color: "#EAB308" }}>Ja vinculados antes: <strong>{importResult.already_matched}</strong></p>
+                  <p style={{ color: "#EF4444" }}>Nao encontrados (salvos): <strong>{importResult.unmatched_stored}</strong></p>
                   {importResult.results.filter((r) => r.status === "matched").length > 0 && (
                     <div style={{ marginTop: 8 }}>
                       <strong>Matches:</strong>
                       {importResult.results.filter((r) => r.status === "matched").map((r, i) => (
-                        <div key={i} style={{ color: "#22C55E", marginLeft: 12 }}>#{r.index} → {r.lead_name} (ID {r.lead_id})</div>
+                        <div key={i} style={{ color: "#22C55E", marginLeft: 12 }}>#{r.index} &rarr; {r.lead_name} (ID {r.lead_id})</div>
                       ))}
                     </div>
                   )}
@@ -215,11 +530,11 @@ export default function SyncPage() {
               )}
             </section>
 
-            {/* Re-sync section */}
+            {/* ─── RE-SYNC SECTION ─── */}
             <section className="adm-ficha-section">
               <h2 className="adm-ficha-section-title">2. Re-sincronizar Pendentes</h2>
               <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>
-                Tenta re-casar submissões não-vinculadas com leads existentes (matching melhorado: últimos 8 dígitos do telefone + normalização de nome).
+                Tenta re-vincular submissoes pendentes com leads existentes (matching por telefone + nome).
               </p>
               <button className="adm-btn-insights" onClick={handleSync} disabled={syncing}>
                 {syncing ? "Sincronizando..." : "🔄 Re-sincronizar Agora"}
@@ -234,7 +549,7 @@ export default function SyncPage() {
                     <div style={{ marginTop: 8 }}>
                       <strong>Matches:</strong>
                       {syncResult.results.filter((r) => r.method !== "no_match").map((r, i) => (
-                        <div key={i} style={{ color: "#22C55E", marginLeft: 12 }}>{r.lead_name} (ID {r.lead_id}) — via {r.method}</div>
+                        <div key={i} style={{ color: "#22C55E", marginLeft: 12 }}>{r.lead_name} (ID {r.lead_id}) &mdash; via {r.method}</div>
                       ))}
                     </div>
                   )}
@@ -242,11 +557,11 @@ export default function SyncPage() {
               )}
             </section>
 
-            {/* Unmatched submissions */}
+            {/* ─── UNMATCHED ─── */}
             <section className="adm-ficha-section">
-              <h2 className="adm-ficha-section-title">3. Submissões Sem Vínculo ({unmatched.filter((u) => !u.matched).length})</h2>
+              <h2 className="adm-ficha-section-title">3. Vincular Manualmente ({unmatched.filter((u) => !u.matched).length})</h2>
               {unmatched.filter((u) => !u.matched).length === 0 ? (
-                <p style={{ color: "rgba(226,221,212,.3)", fontSize: 14 }}>Nenhuma submissão pendente. Tudo vinculado!</p>
+                <p style={{ color: "rgba(226,221,212,.3)", fontSize: 14 }}>Nenhuma submissao pendente. Tudo vinculado!</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   {unmatched.filter((u) => !u.matched).map((sub) => (
@@ -257,7 +572,7 @@ export default function SyncPage() {
                             {sub.name_candidates?.[0] || "Sem nome"}
                           </div>
                           <div style={{ fontSize: 12, color: "rgba(226,221,212,.4)", marginTop: 4 }}>
-                            Tel: {sub.phone_digits || "—"} · {new Date(sub.created_at).toLocaleString("pt-BR")}
+                            Tel: {sub.phone_digits || "—"} &middot; {new Date(sub.created_at).toLocaleString("pt-BR")}
                           </div>
                           {sub.name_candidates?.length > 1 && (
                             <div style={{ fontSize: 11, color: "rgba(226,221,212,.25)", marginTop: 2 }}>
