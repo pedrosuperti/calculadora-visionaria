@@ -879,6 +879,20 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;-webkit-overflow-scrol
 .adm-geo-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center}
 .adm-geo-name{font-size:14px;color:rgba(226,221,212,.7);width:clamp(60px,20%,120px);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* Modal tabs */
+.adm-modal-tabs{display:flex;gap:0;margin:0 -24px;border-bottom:1px solid rgba(255,255,255,.06)}
+.adm-modal-tab{flex:1;padding:12px 16px;background:transparent;border:none;border-bottom:2px solid transparent;color:rgba(226,221,212,.4);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px}
+.adm-modal-tab:hover{color:rgba(226,221,212,.6);background:rgba(255,255,255,.02)}
+.adm-modal-tab.active{color:#C9A84C;border-bottom-color:#C9A84C;background:rgba(201,168,76,.04)}
+.adm-modal-tab.has-data:not(.active){color:rgba(201,168,76,.5)}
+.adm-tab-badge{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:#C9A84C;color:#07090F;font-size:10px;font-weight:800}
+
+/* Forms.app empty state */
+.adm-forms-empty{text-align:center;padding:40px 20px;color:rgba(226,221,212,.4)}
+.adm-forms-empty-icon{font-size:48px;display:block;margin-bottom:12px;opacity:.5}
+.adm-forms-empty p{margin:0;font-size:14px;line-height:1.5}
+.adm-forms-empty-hint{margin-top:8px!important;font-size:12px!important;color:rgba(226,221,212,.25)}
+
 /* Forms.app responses in lead modal */
 .adm-forms-section{margin:16px 0;border:1px solid rgba(201,168,76,.15);border-radius:10px;overflow:hidden}
 .adm-forms-header{display:flex;align-items:center;gap:8px;padding:12px 16px;background:rgba(201,168,76,.06);border-bottom:1px solid rgba(201,168,76,.1);font-size:14px;color:rgba(226,221,212,.9)}
