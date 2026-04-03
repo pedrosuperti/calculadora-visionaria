@@ -82,6 +82,19 @@ function stepToIndex(step: WizardStep): number {
 
 const CONSULTORIA_URL = "https://sis39334.forms.app/aplicacao-consultoria-1";
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  // International: starts with + and non-55 code
+  if (value.startsWith("+") && !digits.startsWith("55")) {
+    return "+" + digits;
+  }
+  // Brazilian format
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+}
+
 // Map step to previous step for back navigation
 function prevStep(step: WizardStep): WizardStep | null {
   const map: Record<string, WizardStep> = {
@@ -464,6 +477,15 @@ export default function Calculator() {
       <div className="grid-bg" />
       <div className="glow-top" />
 
+      {/* Fullscreen analysis overlay */}
+      {loading && step === 1 && (
+        <div className="analysis-overlay">
+          <div className="analysis-overlay-spinner" />
+          <div className="analysis-overlay-text">ANALISANDO SEU MERCADO</div>
+          <div className="analysis-overlay-sub">O Método V.I.S.O.R. está mapeando seu setor e identificando oportunidades escondidas...</div>
+        </div>
+      )}
+
       <div className="card">
         <ProgressDots step={step} />
 
@@ -472,7 +494,8 @@ export default function Calculator() {
           {step === 0 && (
             <div className="step-content">
               <div className="landing-author">
-                <img className="landing-author-img" src="https://pedrosuperti.com.br/wp-content/uploads/2024/01/pedro-superti-perfil.webp" alt="Pedro Superti" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="landing-author-img" src="https://pedrosuperti.com.br/wp-content/uploads/2024/01/pedro-superti-perfil.webp" alt="Pedro Superti" onError={(e) => { (e.target as HTMLImageElement).src = "https://i.pravatar.cc/120?img=68"; }} />
                 <div className="landing-author-info">
                   <div className="landing-author-name">Pedro Superti</div>
                   <div className="landing-author-role">Criador do Método V.I.S.O.R.</div>
@@ -935,12 +958,13 @@ export default function Calculator() {
               <div className="step-subtitle">Essas informações ajudam a IA a calibrar seu plano de 90 dias.</div>
 
               <div className="f">
-                <label>WhatsApp</label>
+                <label>WhatsApp (com DDD)</label>
                 <input
                   type="tel"
-                  placeholder="11 99999-9999"
+                  placeholder="(11) 99999-9999"
                   value={data.whatsapp}
-                  onChange={(e) => set("whatsapp", e.target.value)}
+                  onChange={(e) => set("whatsapp", formatPhone(e.target.value))}
+                  maxLength={16}
                 />
               </div>
 
@@ -1115,63 +1139,132 @@ export default function Calculator() {
             </div>
           )}
 
-          {/* ════════ STEP 9: FINAL ════════ */}
-          {step === 9 && diagnoseResult && (
-            <div className="elegivel-section step-content">
-              <BackButton onClick={goBack} />
+          {/* ════════ STEP 9: FINAL (split by lead quality) ════════ */}
+          {step === 9 && diagnoseResult && (() => {
+            const isQualified = leadResult?.qualified !== false;
 
-              <div className="step-title">{data.nome}, posso te fazer uma proposta?</div>
-              <div className="elegivel-minority">
-                O Método V.I.S.O.R. identificou seu negócio como um dos poucos com potencial visionário real. Você faz parte de uma minoria.
+            return (
+              <div className="elegivel-section step-content">
+                <BackButton onClick={goBack} />
+
+                {isQualified ? (
+                  <>
+                    <div className="step-title">{data.nome}, posso te fazer uma proposta?</div>
+                    <div className="elegivel-minority">
+                      O Método V.I.S.O.R. identificou seu negócio como um dos poucos com potencial visionário real. Você faz parte de uma minoria.
+                    </div>
+
+                    <div className="elegivel-badge">
+                      <div className="elegivel-badge-icon">&#10003;</div>
+                      <div className="elegivel-badge-text">STATUS: ELEGÍVEL</div>
+                    </div>
+
+                    <div className="elegivel-desc">
+                      Seu negócio está elegível para uma sessão estratégica de 40 minutos onde um especialista em diferenciação da minha equipe vai te mostrar exatamente quais dessas oportunidades atacar primeiro e como implementar nos próximos 90 dias.
+                    </div>
+
+                    <div className="elegivel-price">
+                      Essa sessão custa <strong>R$1 mil</strong>. Mas pelo seu perfil, você está elegível para receber uma <strong>sem custo nenhum</strong> — porque estamos selecionando cases para nosso próximo estudo de mercado.
+                    </div>
+
+                    <div className="final-scores">
+                      <div className="final-score-atual">
+                        <div className="final-score-label">Score Atual</div>
+                        <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
+                      </div>
+                      <div className="final-score-arrow">→</div>
+                      <div className="final-score-vis">
+                        <div className="final-score-label">Score Visionário</div>
+                        <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
+                      </div>
+                    </div>
+
+                    <div className="final-riqueza">
+                      <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
+                      <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
+                    </div>
+
+                    <a
+                      href={CONSULTORIA_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: "none", display: "block", width: "100%" }}
+                    >
+                      <button className="btn-gold">
+                        QUERO MINHA SESSÃO ESTRATÉGICA GRATUITA
+                      </button>
+                    </a>
+
+                    <div className="elegivel-vagas">
+                      Vagas limitadas. Apenas {leadResult?.topPercent || 8}% dos perfis analisados recebem essa oferta.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="step-title">{data.nome}, seu plano está pronto</div>
+                    <div className="nurture-intro">
+                      O Método V.I.S.O.R. mapeou oportunidades reais no seu mercado. Seu próximo passo é revisar o plano com calma e começar a implementar.
+                    </div>
+
+                    <div className="final-scores">
+                      <div className="final-score-atual">
+                        <div className="final-score-label">Score Atual</div>
+                        <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
+                      </div>
+                      <div className="final-score-arrow">→</div>
+                      <div className="final-score-vis">
+                        <div className="final-score-label">Score Visionário</div>
+                        <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
+                      </div>
+                    </div>
+
+                    <div className="final-riqueza">
+                      <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
+                      <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
+                    </div>
+
+                    <div className="nurture-ideas">
+                      {diagnoseResult.ideias.map((idea, i) => (
+                        <div className="nurture-idea" key={i}>
+                          <div className="nurture-idea-num">#{i + 1}</div>
+                          <div className="nurture-idea-body">
+                            <div className="nurture-idea-name">{idea.nome}</div>
+                            <div className="nurture-idea-val">{fmt(idea.potencial_anual)}/ano</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="nurture-plano">
+                      <div className="nurture-plano-title">SEU PLANO DE 90 DIAS</div>
+                      <div className="nurture-plano-item"><strong>Semanas 1-2:</strong> {diagnoseResult.plano.semanas_1_2}</div>
+                      <div className="nurture-plano-item"><strong>Semanas 3-4:</strong> {diagnoseResult.plano.semanas_3_4}</div>
+                      <div className="nurture-plano-item"><strong>Mês 2:</strong> {diagnoseResult.plano.mes_2}</div>
+                      <div className="nurture-plano-item"><strong>Mês 3:</strong> {diagnoseResult.plano.mes_3}</div>
+                    </div>
+
+                    <button
+                      className="btn-drill"
+                      onClick={() => window.print()}
+                    >
+                      SALVAR MEU PLANO COMPLETO (PDF)
+                    </button>
+
+                    <div className="nurture-upgrade">
+                      Quer acelerar esses resultados com ajuda de um especialista?
+                      <a
+                        href={CONSULTORIA_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Saiba mais sobre nossa consultoria
+                      </a>
+                    </div>
+                  </>
+                )}
               </div>
-
-              <div className="elegivel-badge">
-                <div className="elegivel-badge-icon">&#10003;</div>
-                <div className="elegivel-badge-text">STATUS: ELEGÍVEL</div>
-              </div>
-
-              <div className="elegivel-desc">
-                Seu negócio está elegível para uma sessão estratégica de 40 minutos onde um especialista em diferenciação da minha equipe vai te mostrar exatamente quais dessas oportunidades atacar primeiro e como implementar nos próximos 90 dias.
-              </div>
-
-              <div className="elegivel-price">
-                Essa sessão custa <strong>R$1 mil</strong>. Mas pelo seu perfil, você está elegível para receber uma <strong>sem custo nenhum</strong> — porque estamos selecionando cases para nosso próximo estudo de mercado.
-              </div>
-
-              {/* Quick recap: scores + riqueza */}
-              <div className="final-scores">
-                <div className="final-score-atual">
-                  <div className="final-score-label">Score Atual</div>
-                  <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
-                </div>
-                <div className="final-score-arrow">→</div>
-                <div className="final-score-vis">
-                  <div className="final-score-label">Score Visionário</div>
-                  <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
-                </div>
-              </div>
-
-              <div className="final-riqueza">
-                <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
-                <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
-              </div>
-
-              <a
-                href={CONSULTORIA_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ textDecoration: "none", display: "block", width: "100%" }}
-              >
-                <button className="btn-gold">
-                  QUERO MINHA SESSÃO ESTRATÉGICA GRATUITA
-                </button>
-              </a>
-
-              <div className="elegivel-vagas">
-                Vagas limitadas. Apenas {leadResult?.topPercent || 8}% dos perfis analisados recebem essa oferta.
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 

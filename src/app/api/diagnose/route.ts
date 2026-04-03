@@ -26,18 +26,26 @@ DADOS DO EMPREENDEDOR:
 REGRAS OBRIGATÓRIAS:
 1. Gere exatamente 3 ideias. Pelo menos 2 devem usar IA de forma central.
 2. Cada ideia deve ser ESPECÍFICA para esse mercado — não genérica. Use o nome do setor, do público, do problema real.
-3. As ideias devem ser INOVADORAS e SURPREENDENTES. PROIBIDO sugerir: franquias, expansão de unidades, rede de licenciamento, ou qualquer ideia óbvia que o empreendedor já pensou. As ideias devem fazer a pessoa pensar "eu nunca tinha pensado nisso!". Busque modelos de negócio não-convencionais, combinações inusitadas de mercados, ou aplicações de IA que não existem ainda nesse setor.
-4. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança.
-5. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
-6. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
-7. Os scores devem refletir análise real:
-   - score_atual (25-45): baseado nas dores selecionadas e na distância entre a situação atual e o potencial
-   - score_visionario (65-90): baseado no potencial combinado das 3 ideias + oportunidades com IA
-8. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
-9. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
-10. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias
-11. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
-12. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
+3. As ideias devem ser INOVADORAS mas VIÁVEIS. PROIBIDO sugerir: franquias, expansão de unidades, rede de licenciamento, ou qualquer ideia óbvia que o empreendedor já pensou. As ideias devem fazer a pessoa pensar "eu nunca tinha pensado nisso!" — MAS devem ser implementáveis na realidade do empreendedor brasileiro com os recursos que ele já tem ou pode acessar facilmente.
+4. FILTRO DE VIABILIDADE CRÍTICO — Antes de incluir cada ideia, verifique:
+   - O empreendedor consegue implementar isso com sua estrutura atual ou com ajustes simples?
+   - Existe demanda REAL e comprovada para isso no Brasil?
+   - É legal, regulamentado e socialmente aceitável?
+   - O público-alvo realmente pagaria por isso?
+   - NÃO invente aplicações absurdas, fantasiosas ou que misturem o negócio com contextos incompatíveis (ex: usar animais para segurança high-tech, terapia com espécies exóticas em hospitais, etc.)
+   - As ideias devem ser DIFERENCIADAS mas CRÍVEIS — algo que um consultor sério recomendaria.
+5. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança. Baseie-se em benchmarks reais do setor.
+6. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
+7. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
+8. Os scores devem refletir análise real e VARIAR de pessoa para pessoa:
+   - score_atual (20-50): baseado nas dores selecionadas, faturamento implícito e distância até o potencial. Mais dores = score mais baixo.
+   - score_visionario (60-92): baseado no potencial combinado das 3 ideias + oportunidades com IA. Varia conforme o mercado.
+   - IMPORTANTE: NÃO use sempre os mesmos valores. Cada análise deve ter scores únicos baseados nos dados reais fornecidos.
+9. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
+10. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
+11. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias. Os valores devem VARIAR conforme o mercado — nem todo mercado tem o mesmo potencial.
+12. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
+13. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
 
 Responda SOMENTE com JSON válido, sem markdown, sem comentários.
 

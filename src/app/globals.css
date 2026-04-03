@@ -333,6 +333,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 .idea-metrics{display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:20px}
 @media(min-width:420px){.idea-metrics{grid-template-columns:1fr 1fr;gap:12px}}
+.idea-metric.gold-metric:last-child{grid-column:1 / -1}
 .idea-metric{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.08);padding:14px 16px}
 .idea-metric-label{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,.65);margin-bottom:5px}
 .idea-metric-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#E2DDD4;letter-spacing:1px}
@@ -442,6 +443,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 /* Loading spinner */
 .loading-inline{display:inline-block;width:14px;height:14px;border:2px solid rgba(201,168,76,.2);border-top-color:#C9A84C;border-radius:50%;animation:spin .6s linear infinite;margin-left:8px;vertical-align:middle}
+
+/* Fullscreen analysis overlay */
+.analysis-overlay{position:fixed;inset:0;z-index:9999;background:rgba(7,9,15,.92);backdrop-filter:blur(8px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.analysis-overlay-spinner{width:56px;height:56px;border:3px solid rgba(201,168,76,.15);border-top-color:#C9A84C;border-radius:50%;animation:spin 1s linear infinite}
+.analysis-overlay-text{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:#C9A84C;text-align:center}
+.analysis-overlay-sub{font-size:14px;color:rgba(226,221,212,.5);text-align:center;max-width:280px;line-height:1.5}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ─── BACK BUTTON ─── */
@@ -569,3 +576,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .elegivel-price{font-size:16px;color:#E2DDD4;line-height:1.7;text-align:center;margin-bottom:28px;padding:16px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.18)}
 .elegivel-price strong{color:#C9A84C}
 .elegivel-vagas{font-size:13px;color:rgba(226,221,212,.45);text-align:center;margin-top:16px;letter-spacing:0.5px}
+
+/* Nurture path (non-qualified leads) */
+.nurture-intro{font-size:15px;color:rgba(226,221,212,.75);line-height:1.7;text-align:center;margin-bottom:24px}
+.nurture-ideas{display:flex;flex-direction:column;gap:10px;margin-bottom:20px}
+.nurture-idea{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.1)}
+.nurture-idea-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:rgba(201,168,76,.5);width:28px;flex-shrink:0}
+.nurture-idea-body{flex:1}
+.nurture-idea-name{font-size:14px;color:#E2DDD4;font-weight:500;margin-bottom:2px}
+.nurture-idea-val{font-family:'Bebas Neue',sans-serif;font-size:17px;color:#C9A84C}
+.nurture-plano{background:rgba(255,255,255,.02);border:1px solid rgba(201,168,76,.1);padding:18px;margin-bottom:24px}
+.nurture-plano-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:rgba(201,168,76,.7);margin-bottom:14px}
+.nurture-plano-item{font-size:14px;color:rgba(226,221,212,.7);line-height:1.6;margin-bottom:10px;padding-left:12px;border-left:2px solid rgba(201,168,76,.15)}
+.nurture-plano-item strong{color:rgba(201,168,76,.85)}
+.nurture-upgrade{font-size:14px;color:rgba(226,221,212,.5);text-align:center;margin-top:20px;line-height:1.6}
+.nurture-upgrade a{color:#C9A84C;text-decoration:underline;display:block;margin-top:6px}
