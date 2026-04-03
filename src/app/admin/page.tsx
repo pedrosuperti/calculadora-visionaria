@@ -5,6 +5,44 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, FunnelChart, Funnel, LabelList,
 } from "recharts";
+import { ComposableMap, Geographies, Geography } from "react-simple-maps";
+
+const WORLD_GEO = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+
+const BROWSER_ICONS: Record<string, string> = {
+  chrome: "🌀", safari: "🧭", firefox: "🦊", edge: "🔷", opera: "🔴",
+  samsung: "📱", brave: "🦁", vivaldi: "🎵", uc: "🟣", unknown: "❓",
+};
+const OS_ICONS: Record<string, string> = {
+  windows: "🪟", macos: "🍎", ios: "📱", android: "🤖", linux: "🐧",
+  chromeos: "💻", unknown: "❓",
+};
+const LANG_FLAGS: Record<string, string> = {
+  "pt-BR": "🇧🇷", "pt": "🇵🇹", "en-US": "🇺🇸", "en-GB": "🇬🇧", "en": "🇬🇧",
+  "es": "🇪🇸", "es-ES": "🇪🇸", "es-AR": "🇦🇷", "es-MX": "🇲🇽", "fr": "🇫🇷",
+  "de": "🇩🇪", "it": "🇮🇹", "ja": "🇯🇵", "zh": "🇨🇳", "ko": "🇰🇷", "ru": "🇷🇺",
+  "ar": "🇸🇦", "hi": "🇮🇳", "nl": "🇳🇱", "pl": "🇵🇱", "unknown": "🌐",
+};
+const COUNTRY_FLAGS: Record<string, string> = {
+  BR: "🇧🇷", US: "🇺🇸", PT: "🇵🇹", GB: "🇬🇧", AR: "🇦🇷", MX: "🇲🇽",
+  CO: "🇨🇴", CL: "🇨🇱", DE: "🇩🇪", FR: "🇫🇷", ES: "🇪🇸", IT: "🇮🇹",
+  JP: "🇯🇵", CA: "🇨🇦", AU: "🇦🇺", IN: "🇮🇳", UY: "🇺🇾", PE: "🇵🇪",
+  PY: "🇵🇾", EC: "🇪🇨", BO: "🇧🇴", VE: "🇻🇪", AO: "🇦🇴", MZ: "🇲🇿",
+};
+const COUNTRY_NAMES: Record<string, string> = {
+  BR: "Brasil", US: "EUA", PT: "Portugal", GB: "Reino Unido", AR: "Argentina",
+  MX: "México", CO: "Colômbia", CL: "Chile", DE: "Alemanha", FR: "França",
+  ES: "Espanha", IT: "Itália", JP: "Japão", CA: "Canadá", AU: "Austrália",
+  IN: "Índia", UY: "Uruguai", PE: "Peru", PY: "Paraguai", EC: "Equador",
+  BO: "Bolívia", VE: "Venezuela", AO: "Angola", MZ: "Moçambique",
+};
+// ISO_A2 → ISO_A3 for map matching
+const ISO2_TO_ISO3: Record<string, string> = {
+  BR: "BRA", US: "USA", PT: "PRT", GB: "GBR", AR: "ARG", MX: "MEX",
+  CO: "COL", CL: "CHL", DE: "DEU", FR: "FRA", ES: "ESP", IT: "ITA",
+  JP: "JPN", CA: "CAN", AU: "AUS", IN: "IND", UY: "URY", PE: "PER",
+  PY: "PRY", EC: "ECU", BO: "BOL", VE: "VEN", AO: "AGO", MZ: "MOZ",
+};
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +79,8 @@ interface CalcEvent {
   referrer: string;
   screen_width: number;
   country: string;
+  region: string;
+  city: string;
   created_at: string;
 }
 
@@ -394,7 +434,10 @@ export default function AdminDashboard() {
         map[d] = (map[d] || 0) + 1;
       }
     });
-    return Object.entries(map).map(([name, value]) => ({ name, value }));
+    const deviceIcons: Record<string, string> = { mobile: "📱", desktop: "🖥️", tablet: "📋", unknown: "❓" };
+    return Object.entries(map).map(([name, value]) => ({
+      name: `${deviceIcons[name.toLowerCase()] || "📱"} ${name}`, value,
+    }));
   }, [calcEvents]);
 
   const DEVICE_COLORS = ["#C9A84C", "#3B82F6", "#F97316", "#A78BFA"];
@@ -410,7 +453,9 @@ export default function AdminDashboard() {
         map[b] = (map[b] || 0) + 1;
       }
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({
+      name: `${BROWSER_ICONS[name.toLowerCase()] || "🌐"} ${name}`, value,
+    }));
   }, [calcEvents]);
 
   // Step funnel (how many reached each step)
@@ -461,7 +506,9 @@ export default function AdminDashboard() {
         map[o] = (map[o] || 0) + 1;
       }
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({
+      name: `${OS_ICONS[name.toLowerCase()] || "💻"} ${name}`, value,
+    }));
   }, [calcEvents]);
 
   // Language breakdown
@@ -475,7 +522,63 @@ export default function AdminDashboard() {
         map[l] = (map[l] || 0) + 1;
       }
     });
-    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([lang, count]) => ({ lang, count }));
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([lang, count]) => ({
+      lang: `${LANG_FLAGS[lang] || "🌐"} ${lang}`, count,
+    }));
+  }, [calcEvents]);
+
+  // Country breakdown
+  const countryChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const c = e.country || "unknown";
+        map[c] = (map[c] || 0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([code, count]) => ({ code, count }));
+  }, [calcEvents]);
+
+  // Country map data (ISO_A3 → count)
+  const countryMapData = useMemo(() => {
+    const map: Record<string, number> = {};
+    countryChart.forEach(({ code, count }) => {
+      const iso3 = ISO2_TO_ISO3[code] || code;
+      map[iso3] = count;
+    });
+    return map;
+  }, [countryChart]);
+
+  const maxCountryCount = useMemo(() => Math.max(...countryChart.map((c) => c.count), 1), [countryChart]);
+
+  // Region (state) breakdown
+  const regionChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const r = e.region || "";
+        if (r) map[r] = (map[r] || 0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([region, count]) => ({ region, count }));
+  }, [calcEvents]);
+
+  // City breakdown
+  const cityChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const c = e.city || "";
+        if (c) map[c] = (map[c] || 0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([city, count]) => ({ city, count }));
   }, [calcEvents]);
 
   // ─── ACTIONS ──────────────────────────────────────────────────────────────
@@ -894,7 +997,7 @@ export default function AdminDashboard() {
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={browserChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={tickSmall} width={80} />
+                    <YAxis type="category" dataKey="name" tick={tickSmall} width={120} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="value" fill="#A78BFA" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -905,7 +1008,7 @@ export default function AdminDashboard() {
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={osChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={tickSmall} width={80} />
+                    <YAxis type="category" dataKey="name" tick={tickSmall} width={120} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="value" fill="#22C55E" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -920,11 +1023,106 @@ export default function AdminDashboard() {
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={langChart} layout="vertical">
                     <XAxis type="number" tick={tickStyle} allowDecimals={false} />
-                    <YAxis type="category" dataKey="lang" tick={tickSmall} width={80} />
+                    <YAxis type="category" dataKey="lang" tick={tickSmall} width={110} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Bar dataKey="count" fill="#00E5FF" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* ═══ GEOLOCATION ═══ */}
+            <div className="adm-section-divider" />
+            <div className="adm-section-title">🗺️ GEOLOCALIZAÇÃO</div>
+
+            {/* World map */}
+            <div className="adm-chart-card full">
+              <div className="adm-chart-title">🌎 MAPA DE ACESSOS</div>
+              <ComposableMap
+                projection="geoMercator"
+                projectionConfig={{ scale: 120, center: [0, 20] }}
+                style={{ width: "100%", height: "auto", maxHeight: 360 }}
+              >
+                <Geographies geography={WORLD_GEO}>
+                  {({ geographies }) =>
+                    geographies.map((geo) => {
+                      const iso3 = geo.properties.ISO_A3 || geo.id || "";
+                      const count = countryMapData[iso3] || 0;
+                      const intensity = count > 0 ? Math.min(count / maxCountryCount, 1) : 0;
+                      return (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill={count > 0
+                            ? `rgba(201,168,76,${0.2 + intensity * 0.8})`
+                            : "rgba(255,255,255,.03)"
+                          }
+                          stroke="rgba(255,255,255,.08)"
+                          strokeWidth={0.5}
+                          style={{
+                            hover: { fill: count > 0 ? "#C9A84C" : "rgba(255,255,255,.08)" },
+                          }}
+                        />
+                      );
+                    })
+                  }
+                </Geographies>
+              </ComposableMap>
+            </div>
+
+            {/* Row: Countries + States */}
+            <div className="adm-chart-row">
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">🏳️ POR PAÍS</div>
+                {countryChart.length === 0 ? (
+                  <div className="adm-empty-sm">Sem dados de país ainda</div>
+                ) : (
+                  <div className="adm-geo-list">
+                    {countryChart.map((c, i) => (
+                      <div key={i} className="adm-geo-row">
+                        <span className="adm-geo-rank">#{i + 1}</span>
+                        <span className="adm-geo-icon">{COUNTRY_FLAGS[c.code] || "🏳️"}</span>
+                        <span className="adm-geo-name">{COUNTRY_NAMES[c.code] || c.code}</span>
+                        <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${(c.count / (countryChart[0]?.count || 1)) * 100}%` }} /></div>
+                        <span className="adm-market-count">{c.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">📍 POR ESTADO</div>
+                {regionChart.length === 0 ? (
+                  <div className="adm-empty-sm">Sem dados de estado ainda</div>
+                ) : (
+                  <div className="adm-geo-list">
+                    {regionChart.map((r, i) => (
+                      <div key={i} className="adm-geo-row">
+                        <span className="adm-geo-rank">#{i + 1}</span>
+                        <span className="adm-geo-name">{r.region}</span>
+                        <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${(r.count / (regionChart[0]?.count || 1)) * 100}%` }} /></div>
+                        <span className="adm-market-count">{r.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Cities */}
+            {cityChart.length > 0 && (
+              <div className="adm-chart-card full">
+                <div className="adm-chart-title">🏙️ TOP CIDADES</div>
+                <div className="adm-geo-list">
+                  {cityChart.map((c, i) => (
+                    <div key={i} className="adm-geo-row">
+                      <span className="adm-geo-rank">#{i + 1}</span>
+                      <span className="adm-geo-name">{c.city}</span>
+                      <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${(c.count / (cityChart[0]?.count || 1)) * 100}%`, background: "linear-gradient(90deg,#00E5FF,rgba(0,229,255,.4))" }} /></div>
+                      <span className="adm-market-count">{c.count}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

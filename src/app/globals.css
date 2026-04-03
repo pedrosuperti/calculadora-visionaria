@@ -867,6 +867,13 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;-webkit-overflow-scrol
 .adm-status-btns{position:relative;-webkit-overflow-scrolling:touch}
 @media(max-width:400px){.adm-status-btns{overflow-x:auto;flex-wrap:nowrap;padding-bottom:4px}}
 
+/* Geo list */
+.adm-geo-list{display:flex;flex-direction:column;gap:10px}
+.adm-geo-row{display:flex;align-items:center;gap:8px}
+.adm-geo-rank{font-family:'Bebas Neue',sans-serif;font-size:14px;color:rgba(201,168,76,.5);width:28px;flex-shrink:0}
+.adm-geo-icon{font-size:18px;flex-shrink:0;width:24px;text-align:center}
+.adm-geo-name{font-size:14px;color:rgba(226,221,212,.7);width:clamp(60px,20%,120px);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* Recharts tooltip override */
 .recharts-tooltip-wrapper{outline:none}
 .recharts-default-tooltip{background:#0D1117!important;border:1px solid rgba(201,168,76,.2)!important}

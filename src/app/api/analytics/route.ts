@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
       screen_width,
     } = body;
 
-    // Guess country from Accept-Language header (rough heuristic)
-    const acceptLang = req.headers.get("accept-language") || "";
-    const country = guessCountry(acceptLang);
+    // Vercel geo headers (available on Vercel deployments)
+    const country = req.headers.get("x-vercel-ip-country") || guessCountry(req.headers.get("accept-language") || "");
+    const region = req.headers.get("x-vercel-ip-country-region") || "";
+    const city = decodeURIComponent(req.headers.get("x-vercel-ip-city") || "");
 
     const supabase = getSupabase();
     if (!supabase) return ok;
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest) {
         referrer: referrer || "",
         screen_width: screen_width || 0,
         country,
+        region,
+        city,
       })
       .then(({ error }) => {
         if (error) console.warn("[analytics] insert error:", error.message);
@@ -53,10 +56,9 @@ export async function POST(req: NextRequest) {
   return ok;
 }
 
-/** Rough country guess from Accept-Language header */
+/** Rough country guess from Accept-Language header (fallback) */
 function guessCountry(header: string): string {
   if (!header) return "";
-  // e.g. "pt-BR,pt;q=0.9,en-US;q=0.8" → "BR"
   const match = header.match(/[a-z]{2}-([A-Z]{2})/);
   return match ? match[1] : "";
 }
