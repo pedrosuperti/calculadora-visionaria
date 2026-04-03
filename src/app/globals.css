@@ -608,69 +608,149 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .nurture-upgrade{font-size:14px;color:rgba(226,221,212,.5);text-align:center;margin-top:20px;line-height:1.6}
 .nurture-upgrade a{color:#C9A84C;text-decoration:underline;display:block;margin-top:6px}
 
-/* ═══ ADMIN DASHBOARD ═══ */
-.admin-login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
-.admin-login-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.15);padding:40px;max-width:360px;width:100%;text-align:center}
-.admin-login-card h1{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#C9A84C;letter-spacing:2px;margin-bottom:4px}
-.admin-login-card p{font-size:13px;color:rgba(226,221,212,.4);margin-bottom:24px}
-.admin-login-card input{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.14);padding:14px;color:#E2DDD4;font-size:16px;margin-bottom:12px;outline:none}
-.admin-login-card input:focus{border-color:rgba(201,168,76,.4)}
-.admin-login-card button{width:100%;padding:14px;background:#C9A84C;color:#07090F;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;border:none;cursor:pointer}
+/* ═══ ADMIN DASHBOARD v2 ═══ */
 
-.admin-wrap{max-width:900px;margin:0 auto;padding:20px}
-.admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
-.admin-header h1{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#C9A84C;letter-spacing:2px}
-.admin-refresh{padding:8px 16px;background:rgba(201,168,76,.1);border:1px solid rgba(201,168,76,.2);color:#C9A84C;font-size:13px;cursor:pointer}
-.admin-refresh:disabled{opacity:.5}
+/* Login */
+.adm-login{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:#07090F}
+.adm-login-card{background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.15);padding:48px 40px;max-width:380px;width:100%;text-align:center}
+.adm-login-brand{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#C9A84C;letter-spacing:6px;margin-bottom:4px}
+.adm-login-card h1{font-family:'Bebas Neue',sans-serif;font-size:22px;color:rgba(226,221,212,.6);letter-spacing:2px;margin-bottom:28px;font-weight:400}
+.adm-login-card input{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(201,168,76,.14);padding:14px 16px;color:#E2DDD4;font-size:15px;margin-bottom:14px;outline:none;transition:border-color .2s}
+.adm-login-card input:focus{border-color:rgba(201,168,76,.5)}
+.adm-login-card button{width:100%;padding:14px;background:#C9A84C;color:#07090F;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;border:none;cursor:pointer;transition:opacity .2s}
+.adm-login-card button:hover{opacity:.85}
 
-.admin-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
-@media(max-width:600px){.admin-stats{grid-template-columns:repeat(3,1fr)}}
-.admin-stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);padding:14px;text-align:center}
-.admin-stat-num{font-family:'Bebas Neue',sans-serif;font-size:28px;color:#E2DDD4}
-.admin-stat-label{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(226,221,212,.4)}
-.admin-stat.hot .admin-stat-num{color:var(--green)}
-.admin-stat.warm .admin-stat-num{color:#C9A84C}
-.admin-stat.cold .admin-stat-num{color:var(--orange)}
-.admin-stat.applied .admin-stat-num{color:#00E5FF}
+/* Layout */
+.adm{min-height:100vh;background:#07090F;padding:0 20px 40px}
 
-.admin-filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.admin-filter-btn{padding:8px 16px;background:transparent;border:1px solid rgba(255,255,255,.1);color:rgba(226,221,212,.5);font-size:13px;cursor:pointer;letter-spacing:1px}
-.admin-filter-btn.active{border-color:rgba(201,168,76,.4);color:#C9A84C;background:rgba(201,168,76,.06)}
+/* Header */
+.adm-header{display:flex;align-items:center;justify-content:space-between;padding:16px 0;border-bottom:1px solid rgba(201,168,76,.1);margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.adm-header-left{display:flex;align-items:center;gap:14px}
+.adm-logo{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#C9A84C;letter-spacing:4px}
+.adm-title{font-size:14px;color:rgba(226,221,212,.4);letter-spacing:1px}
+.adm-header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.adm-tabs{display:flex;gap:0;border:1px solid rgba(201,168,76,.15);overflow:hidden}
+.adm-tab{padding:8px 18px;background:transparent;border:none;color:rgba(226,221,212,.4);font-size:13px;cursor:pointer;letter-spacing:1px;transition:all .2s}
+.adm-tab.active{background:rgba(201,168,76,.1);color:#C9A84C}
+.adm-btn-sec{padding:8px 16px;background:rgba(201,168,76,.08);border:1px solid rgba(201,168,76,.18);color:#C9A84C;font-size:12px;cursor:pointer;letter-spacing:1px;text-decoration:none;transition:all .2s}
+.adm-btn-sec:hover{background:rgba(201,168,76,.15)}
+.adm-btn-sec:disabled{opacity:.4;cursor:default}
 
-.admin-leads{display:flex;flex-direction:column;gap:8px}
-.admin-empty{text-align:center;padding:40px;color:rgba(226,221,212,.3)}
-.admin-lead-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);padding:14px 16px;cursor:pointer;transition:border-color .2s}
-.admin-lead-card:hover{border-color:rgba(201,168,76,.3)}
-.admin-lead-card.hot{border-left:3px solid var(--green)}
-.admin-lead-card.warm{border-left:3px solid #C9A84C}
-.admin-lead-card.cold{border-left:3px solid var(--orange)}
+/* KPI Row */
+.adm-kpis{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;margin-bottom:28px}
+@media(max-width:900px){.adm-kpis{grid-template-columns:repeat(4,1fr)}}
+@media(max-width:500px){.adm-kpis{grid-template-columns:repeat(2,1fr)}}
+.adm-kpi{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);padding:18px 12px;text-align:center;transition:border-color .2s}
+.adm-kpi:hover{border-color:rgba(201,168,76,.2)}
+.adm-kpi-num{font-family:'Bebas Neue',sans-serif;font-size:36px;color:#E2DDD4;line-height:1}
+.adm-kpi-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(226,221,212,.35);margin-top:6px}
+.adm-kpi.hot .adm-kpi-num{color:#22C55E}
+.adm-kpi.warm .adm-kpi-num{color:#C9A84C}
+.adm-kpi.cold .adm-kpi-num{color:#F97316}
+.adm-kpi.accent .adm-kpi-num{color:#00E5FF}
+.adm-kpi.accent2 .adm-kpi-num{color:#A78BFA}
 
-.admin-lead-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.admin-lead-name{font-size:16px;font-weight:600;color:#E2DDD4}
-.admin-lead-tier{font-size:11px;letter-spacing:2px;padding:3px 10px;font-weight:700}
-.admin-lead-tier.hot{background:rgba(34,197,94,.1);color:var(--green)}
-.admin-lead-tier.warm{background:rgba(201,168,76,.1);color:#C9A84C}
-.admin-lead-tier.cold{background:rgba(239,68,68,.1);color:var(--orange)}
+/* ─── ANALYTICS TAB ─── */
+.adm-analytics{display:flex;flex-direction:column;gap:20px}
+.adm-chart-row{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+.adm-chart-row .adm-chart-card.wide{grid-column:auto}
+@media(max-width:768px){.adm-chart-row{grid-template-columns:1fr}}
+.adm-chart-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);padding:20px;transition:border-color .2s}
+.adm-chart-card:hover{border-color:rgba(201,168,76,.15)}
+.adm-chart-card.full{width:100%}
+.adm-chart-title{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:rgba(201,168,76,.6);margin-bottom:16px}
 
-.admin-lead-meta{font-size:13px;color:rgba(226,221,212,.45);display:flex;gap:12px;margin-bottom:6px}
-.admin-lead-bottom{display:flex;align-items:center;gap:12px;font-size:12px;color:rgba(226,221,212,.35);flex-wrap:wrap}
-.admin-lead-score{font-weight:600;color:rgba(201,168,76,.7)}
-.admin-lead-badge{background:rgba(0,229,255,.1);color:#00E5FF;padding:2px 8px;font-size:10px;letter-spacing:1px;font-weight:700}
-.admin-lead-phone{color:rgba(226,221,212,.4)}
-.admin-lead-date{margin-left:auto}
+/* Top Markets horizontal bars */
+.adm-markets{display:flex;flex-direction:column;gap:10px}
+.adm-market-row{display:flex;align-items:center;gap:10px}
+.adm-market-rank{font-family:'Bebas Neue',sans-serif;font-size:14px;color:rgba(201,168,76,.5);width:28px;flex-shrink:0}
+.adm-market-name{font-size:13px;color:rgba(226,221,212,.7);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-market-bar{flex:1;height:8px;background:rgba(255,255,255,.04);overflow:hidden;border-radius:4px}
+.adm-market-fill{height:100%;background:linear-gradient(90deg,#C9A84C,rgba(201,168,76,.4));border-radius:4px;transition:width .5s ease}
+.adm-market-count{font-family:'Bebas Neue',sans-serif;font-size:16px;color:rgba(226,221,212,.5);width:30px;text-align:right}
 
-.admin-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
-.admin-modal{background:#0D1117;border:1px solid rgba(201,168,76,.2);max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:28px;position:relative}
-.admin-modal-close{position:absolute;top:12px;right:14px;background:none;border:none;color:rgba(226,221,212,.4);font-size:20px;cursor:pointer}
-.admin-modal h2{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#C9A84C;letter-spacing:1px;margin-bottom:8px}
-.admin-modal .admin-lead-tier{display:inline-block;margin-bottom:20px}
+/* ─── LEADS TAB ─── */
 
-.admin-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
-.admin-detail-item{display:flex;flex-direction:column;gap:2px}
-.admin-detail-item.full{grid-column:1 / -1}
-.admin-detail-item label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,.6)}
-.admin-detail-item span,.admin-detail-item a{font-size:14px;color:#E2DDD4;word-break:break-all}
-.admin-detail-item a{color:#00E5FF;text-decoration:none}
-.admin-detail-item a:hover{text-decoration:underline}
+/* Toolbar */
+.adm-toolbar{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.adm-search{flex:1;min-width:200px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:10px 14px;color:#E2DDD4;font-size:14px;outline:none;transition:border-color .2s}
+.adm-search:focus{border-color:rgba(201,168,76,.4)}
+.adm-search::placeholder{color:rgba(226,221,212,.25)}
+.adm-toolbar-right{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.adm-sort{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);padding:10px 12px;color:#E2DDD4;font-size:13px;outline:none;cursor:pointer}
+.adm-sort option{background:#0D1117;color:#E2DDD4}
+.adm-filters{display:flex;gap:0;border:1px solid rgba(255,255,255,.08);overflow:hidden}
+.adm-filter{padding:8px 14px;background:transparent;border:none;color:rgba(226,221,212,.4);font-size:12px;cursor:pointer;letter-spacing:1px;transition:all .2s;display:flex;align-items:center;gap:5px}
+.adm-filter.active{background:rgba(201,168,76,.1);color:#C9A84C}
+.adm-filter-count{font-family:'Bebas Neue',sans-serif;font-size:13px;opacity:.6}
 
-.admin-whatsapp-btn{display:block;width:100%;padding:14px;background:#25D366;color:#fff;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;text-decoration:none}
+/* Lead List */
+.adm-list{display:flex;flex-direction:column;gap:6px}
+.adm-empty{text-align:center;padding:60px 20px;color:rgba(226,221,212,.25);font-size:14px}
+
+/* Lead Card */
+.adm-card{display:flex;align-items:center;gap:14px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);padding:14px 16px;cursor:pointer;transition:all .2s}
+.adm-card:hover{border-color:rgba(201,168,76,.25);background:rgba(255,255,255,.03)}
+.adm-card.hot{border-left:3px solid #22C55E}
+.adm-card.warm{border-left:3px solid #C9A84C}
+.adm-card.cold{border-left:3px solid #F97316}
+
+.adm-card-left{flex-shrink:0}
+.adm-card-score{width:44px;height:44px;border-radius:50%;border:2px solid #555;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#E2DDD4}
+
+.adm-card-center{flex:1;min-width:0}
+.adm-card-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.adm-card-name{font-size:15px;font-weight:600;color:#E2DDD4}
+.adm-card-tier{font-size:10px;letter-spacing:2px;padding:2px 8px;font-weight:700}
+.adm-card-tier.hot{background:rgba(34,197,94,.1);color:#22C55E}
+.adm-card-tier.warm{background:rgba(201,168,76,.1);color:#C9A84C}
+.adm-card-tier.cold{background:rgba(249,115,22,.1);color:#F97316}
+.adm-card-applied{background:rgba(0,229,255,.1);color:#00E5FF;padding:2px 8px;font-size:10px;letter-spacing:1px;font-weight:700}
+.adm-card-status{font-size:11px;font-weight:600}
+.adm-card-meta{font-size:12px;color:rgba(226,221,212,.35);display:flex;gap:12px;flex-wrap:wrap}
+
+.adm-card-right{flex-shrink:0;text-align:right}
+.adm-card-time{font-size:12px;color:rgba(226,221,212,.3)}
+
+/* ─── DETAIL MODAL ─── */
+.adm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px)}
+.adm-modal{background:#0D1117;border:1px solid rgba(201,168,76,.2);max-width:560px;width:100%;max-height:90vh;overflow-y:auto;padding:32px;position:relative}
+.adm-modal-x{position:absolute;top:14px;right:16px;background:none;border:none;color:rgba(226,221,212,.35);font-size:20px;cursor:pointer;transition:color .2s}
+.adm-modal-x:hover{color:#E2DDD4}
+
+.adm-modal-header{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.adm-modal-score{width:56px;height:56px;border-radius:50%;border:3px solid #555;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:24px;color:#E2DDD4;flex-shrink:0}
+.adm-modal-header h2{font-family:'Bebas Neue',sans-serif;font-size:24px;color:#C9A84C;letter-spacing:1px;margin:0 0 4px}
+.adm-modal-badges{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.adm-modal-time{font-size:12px;color:rgba(226,221,212,.3)}
+
+/* Modal detail grid */
+.adm-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.adm-modal-field{display:flex;flex-direction:column;gap:3px}
+.adm-modal-field.full{grid-column:1 / -1}
+.adm-modal-field label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,.55)}
+.adm-modal-field span{font-size:14px;color:rgba(226,221,212,.8)}
+.adm-modal-field a{font-size:14px;color:#00E5FF;text-decoration:none;word-break:break-all}
+.adm-modal-field a:hover{text-decoration:underline}
+
+/* Contact status buttons */
+.adm-modal-section{margin-bottom:20px}
+.adm-modal-section label{display:block;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(201,168,76,.55);margin-bottom:10px}
+.adm-status-btns{display:flex;gap:6px;flex-wrap:wrap}
+.adm-status-btn{padding:7px 14px;border:1px solid;font-size:12px;cursor:pointer;letter-spacing:.5px;transition:all .2s;background:transparent}
+.adm-status-btn.active{font-weight:600}
+.adm-status-btn:hover{opacity:.8}
+
+/* Notes */
+.adm-notes{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);padding:12px;color:#E2DDD4;font-size:13px;line-height:1.5;resize:vertical;outline:none;font-family:'Outfit',sans-serif;transition:border-color .2s}
+.adm-notes:focus{border-color:rgba(201,168,76,.3)}
+.adm-notes::placeholder{color:rgba(226,221,212,.2)}
+
+/* WhatsApp button */
+.adm-modal-actions{margin-top:20px}
+.adm-btn-whatsapp{display:block;width:100%;padding:14px;background:#25D366;color:#fff;text-align:center;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;text-decoration:none;transition:opacity .2s}
+.adm-btn-whatsapp:hover{opacity:.85}
+
+/* Recharts tooltip override */
+.recharts-tooltip-wrapper{outline:none}
+.recharts-default-tooltip{background:#0D1117!important;border:1px solid rgba(201,168,76,.2)!important}
