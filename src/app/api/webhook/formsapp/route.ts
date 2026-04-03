@@ -82,18 +82,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // No match found - save as new entry with formsapp data
-    await supabase
-      .from("leads-calculadora-visionaria")
-      .insert({
-        whatsapp: phoneMatch || "unknown",
-        formsapp_completed: true,
-        formsapp_data: payload,
-        formsapp_at: new Date().toISOString(),
-      });
-
-    console.log("Webhook: no match, created new lead. Phone:", phoneMatch || "not found");
-    return NextResponse.json({ status: "ok", matched: false });
+    // No match found - do NOT create empty lead, just log it
+    console.log("Webhook: no match found. Phone:", phoneMatch || "not found", "Payload saved to logs only.");
+    return NextResponse.json({ status: "ok", matched: false, note: "no matching lead found" });
   } catch (error) {
     console.error("Webhook error:", error);
     // Return 200 to prevent retries on parse errors

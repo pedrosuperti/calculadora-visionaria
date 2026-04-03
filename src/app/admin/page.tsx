@@ -50,8 +50,8 @@ const CONTACT_COLORS: Record<string, string> = {
   descartado: "#EF4444",
 };
 
-const TIER_COLORS = { hot: "#22C55E", warm: "#C9A84C", cold: "#F97316" };
-const PIE_COLORS = ["#22C55E", "#C9A84C", "#F97316"];
+const TIER_COLORS = { hot: "#F97316", warm: "#EAB308", cold: "#3B82F6" };
+const PIE_COLORS = ["#F97316", "#EAB308", "#3B82F6"];
 
 // ─── UTILS ──────────────────────────────────────────────────────────────────
 
@@ -82,7 +82,10 @@ const ADMIN_PASS = "visor2026";
 // ─── COMPONENT ──────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
-  const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState(() => {
+    if (typeof window !== "undefined") return sessionStorage.getItem("adm_auth") === "1";
+    return false;
+  });
   const [pass, setPass] = useState("");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
@@ -90,13 +93,21 @@ export default function AdminDashboard() {
   const [sort, setSort] = useState<SortKey>("date");
   const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [tab, setTab] = useState<"leads" | "analytics">("leads");
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/leads");
-      if (res.ok) setLeads(await res.json());
+      if (res.ok) {
+        const raw: Lead[] = await res.json();
+        // Fix tier from score (in case DB has stale tier)
+        const fixed = raw.map((l) => {
+          const s = l.internal_score || 0;
+          const correctTier = s >= 70 ? "hot" : s >= 40 ? "warm" : (l.tier || "cold");
+          return { ...l, tier: s > 0 ? correctTier : (l.tier || "cold") };
+        });
+        setLeads(fixed);
+      }
     } catch (e) {
       console.error("Fetch error:", e);
     } finally {
@@ -114,6 +125,8 @@ export default function AdminDashboard() {
     const interval = setInterval(fetchLeads, 60000);
     return () => clearInterval(interval);
   }, [authed, fetchLeads]);
+
+  const [page, setPage] = useState<"home" | "leads" | "analytics">("home");
 
   // ─── DERIVED DATA ─────────────────────────────────────────────────────────
 
@@ -216,6 +229,80 @@ export default function AdminDashboard() {
     }));
   }, [leads]);
 
+  // Score distribution histogram (0-20, 20-40, 40-60, 60-80, 80-100)
+  const scoreDist = useMemo(() => {
+    const buckets = [
+      { range: "0-20", count: 0, color: "#3B82F6" },
+      { range: "20-40", count: 0, color: "#3B82F6" },
+      { range: "40-60", count: 0, color: "#EAB308" },
+      { range: "60-80", count: 0, color: "#EAB308" },
+      { range: "80-100", count: 0, color: "#F97316" },
+    ];
+    leads.forEach((l) => {
+      const s = l.internal_score || 0;
+      if (s < 20) buckets[0].count++;
+      else if (s < 40) buckets[1].count++;
+      else if (s < 60) buckets[2].count++;
+      else if (s < 80) buckets[3].count++;
+      else buckets[4].count++;
+    });
+    return buckets;
+  }, [leads]);
+
+  // Investimento distribution
+  const invChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    leads.forEach((l) => {
+      const inv = l.investimento || "N/A";
+      map[inv] = (map[inv] || 0) + 1;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1] - a[1])
+      .map(([inv, count]) => ({ inv: inv.replace("R$", "").slice(0, 18), count }));
+  }, [leads]);
+
+  // Leads needing attention (hot/warm, no contact, > 30 min)
+  const needsAttention = useMemo(() => {
+    const cutoff = Date.now() - 1800000; // 30 min
+    return leads.filter(
+      (l) =>
+        (l.tier === "hot" || l.tier === "warm") &&
+        (!l.contact_status || l.contact_status === "novo") &&
+        new Date(l.created_at).getTime() < cutoff
+    ).slice(0, 5);
+  }, [leads]);
+
+  // Recent leads (last 5)
+  const recentLeads = useMemo(() => {
+    return [...leads].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
+  }, [leads]);
+
+  // Best markets by hot rate
+  const bestMarkets = useMemo(() => {
+    const map: Record<string, { total: number; hot: number }> = {};
+    leads.forEach((l) => {
+      const m = (l.mercado || "").slice(0, 35) || "N/A";
+      if (!map[m]) map[m] = { total: 0, hot: 0 };
+      map[m].total++;
+      if (l.tier === "hot") map[m].hot++;
+    });
+    return Object.entries(map)
+      .filter(([, v]) => v.total >= 1)
+      .sort((a, b) => (b[1].hot / b[1].total) - (a[1].hot / a[1].total))
+      .slice(0, 5)
+      .map(([market, v]) => ({ market, total: v.total, hot: v.hot, rate: Math.round((v.hot / v.total) * 100) }));
+  }, [leads]);
+
+  // Today's stats
+  const todayStats = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayLeads = leads.filter((l) => l.created_at?.slice(0, 10) === today);
+    return {
+      count: todayLeads.length,
+      hot: todayLeads.filter((l) => l.tier === "hot").length,
+    };
+  }, [leads]);
+
   // Conversion funnel
   const funnelData = useMemo(() => [
     { name: "Leads", value: stats.total, fill: "#C9A84C" },
@@ -276,9 +363,9 @@ export default function AdminDashboard() {
             placeholder="Senha de acesso"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && pass === ADMIN_PASS) setAuthed(true); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && pass === ADMIN_PASS) { sessionStorage.setItem("adm_auth", "1"); setAuthed(true); } }}
           />
-          <button onClick={() => pass === ADMIN_PASS && setAuthed(true)}>ENTRAR</button>
+          <button onClick={() => { if (pass === ADMIN_PASS) { sessionStorage.setItem("adm_auth", "1"); setAuthed(true); } }}>ENTRAR</button>
         </div>
       </div>
     );
@@ -286,252 +373,366 @@ export default function AdminDashboard() {
 
   // ─── DASHBOARD ────────────────────────────────────────────────────────────
 
+  const tooltipStyle = { background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" };
+  const tickStyle = { fill: "rgba(226,221,212,.4)", fontSize: 11 };
+  const tickSmall = { fill: "rgba(226,221,212,.4)", fontSize: 10 };
+
   return (
     <div className="adm">
-      {/* Header */}
-      <header className="adm-header">
-        <div className="adm-header-left">
-          <div className="adm-logo">V.I.S.O.R.</div>
-          <span className="adm-title">Central de Leads</span>
+      {/* ═══ SIDEBAR ═══ */}
+      <aside className="adm-side">
+        <div className="adm-side-brand">V.I.S.O.R.</div>
+        <div className="adm-side-sub">Central de Leads</div>
+        <nav className="adm-side-nav">
+          <button className={`adm-nav${page === "home" ? " active" : ""}`} onClick={() => setPage("home")}>Dashboard</button>
+          <button className={`adm-nav${page === "leads" ? " active" : ""}`} onClick={() => setPage("leads")}>Leads</button>
+          <button className={`adm-nav${page === "analytics" ? " active" : ""}`} onClick={() => setPage("analytics")}>Analytics</button>
+        </nav>
+        <div className="adm-side-actions">
+          <a href="/api/admin/leads/export" className="adm-nav" download>Exportar CSV</a>
+          <button className="adm-nav" onClick={fetchLeads} disabled={loading}>{loading ? "..." : "Atualizar"}</button>
         </div>
-        <div className="adm-header-right">
-          <div className="adm-tabs">
-            <button className={`adm-tab${tab === "leads" ? " active" : ""}`} onClick={() => setTab("leads")}>Leads</button>
-            <button className={`adm-tab${tab === "analytics" ? " active" : ""}`} onClick={() => setTab("analytics")}>Analytics</button>
+        <div className="adm-side-foot">
+          <button className="adm-nav logout" onClick={() => { sessionStorage.removeItem("adm_auth"); setAuthed(false); }}>Sair</button>
+        </div>
+      </aside>
+
+      {/* ═══ MAIN CONTENT ═══ */}
+      <main className="adm-main">
+
+        {/* KPI Row - always visible */}
+        <div className="adm-kpis">
+          <div className="adm-kpi"><div className="adm-kpi-num">{stats.total}</div><div className="adm-kpi-label">Total Leads</div></div>
+          <div className="adm-kpi hot"><div className="adm-kpi-num">{stats.hot}</div><div className="adm-kpi-label">Hot</div></div>
+          <div className="adm-kpi warm"><div className="adm-kpi-num">{stats.warm}</div><div className="adm-kpi-label">Warm</div></div>
+          <div className="adm-kpi cold"><div className="adm-kpi-num">{stats.cold}</div><div className="adm-kpi-label">Cold</div></div>
+          <div className="adm-kpi accent"><div className="adm-kpi-num">{stats.applied}</div><div className="adm-kpi-label">Aplicaram</div></div>
+          <div className="adm-kpi accent2"><div className="adm-kpi-num">{stats.scheduled}</div><div className="adm-kpi-label">Agendaram</div></div>
+          <div className="adm-kpi"><div className="adm-kpi-num">{stats.avgScore}</div><div className="adm-kpi-label">Score Médio</div></div>
+          <div className="adm-kpi"><div className="adm-kpi-num">{stats.convRate}%</div><div className="adm-kpi-label">Conv. Rate</div></div>
+        </div>
+
+        {/* Alert */}
+        {hotAlerts.length > 0 && (
+          <div className="adm-alert">
+            <span className="adm-alert-icon">!</span>
+            <span>{hotAlerts.length} lead{hotAlerts.length > 1 ? "s" : ""} HOT sem contato há mais de 1h:</span>
+            <span className="adm-alert-names">{hotAlerts.slice(0, 3).map((l) => l.nome || "Sem nome").join(", ")}{hotAlerts.length > 3 && ` +${hotAlerts.length - 3}`}</span>
           </div>
-          <a href="/api/admin/leads/export" className="adm-btn-sec" download>CSV</a>
-          <button className="adm-btn-sec" onClick={fetchLeads} disabled={loading}>
-            {loading ? "..." : "Atualizar"}
-          </button>
-        </div>
-      </header>
+        )}
 
-      {/* KPI Row */}
-      <div className="adm-kpis">
-        <div className="adm-kpi">
-          <div className="adm-kpi-num">{stats.total}</div>
-          <div className="adm-kpi-label">Total Leads</div>
-        </div>
-        <div className="adm-kpi hot">
-          <div className="adm-kpi-num">{stats.hot}</div>
-          <div className="adm-kpi-label">Hot</div>
-        </div>
-        <div className="adm-kpi warm">
-          <div className="adm-kpi-num">{stats.warm}</div>
-          <div className="adm-kpi-label">Warm</div>
-        </div>
-        <div className="adm-kpi cold">
-          <div className="adm-kpi-num">{stats.cold}</div>
-          <div className="adm-kpi-label">Cold</div>
-        </div>
-        <div className="adm-kpi accent">
-          <div className="adm-kpi-num">{stats.applied}</div>
-          <div className="adm-kpi-label">Aplicaram</div>
-        </div>
-        <div className="adm-kpi accent2">
-          <div className="adm-kpi-num">{stats.scheduled}</div>
-          <div className="adm-kpi-label">Agendaram</div>
-        </div>
-        <div className="adm-kpi">
-          <div className="adm-kpi-num">{stats.avgScore}</div>
-          <div className="adm-kpi-label">Score Médio</div>
-        </div>
-        <div className="adm-kpi">
-          <div className="adm-kpi-num">{stats.convRate}%</div>
-          <div className="adm-kpi-label">Conv. Rate</div>
-        </div>
-      </div>
+        {/* ═══ HOME PAGE ═══ */}
+        {page === "home" && (
+          <>
+            {/* 4-column grid with charts + data widgets */}
+            <div className="adm-home-grid">
+              {/* Col 1-2: Line chart wide */}
+              <div className="adm-widget wide">
+                <div className="adm-chart-title">LEADS POR DIA (14 DIAS)</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <LineChart data={dailyChart}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
+                    <XAxis dataKey="date" tick={tickSmall} />
+                    <YAxis tick={tickSmall} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Line type="monotone" dataKey="leads" stroke="#C9A84C" strokeWidth={2} dot={{ r: 3, fill: "#C9A84C" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
 
-      {/* Alert banner for hot leads not contacted */}
-      {hotAlerts.length > 0 && (
-        <div className="adm-alert">
-          <span className="adm-alert-icon">!</span>
-          <span>{hotAlerts.length} lead{hotAlerts.length > 1 ? "s" : ""} HOT sem contato há mais de 1h:</span>
-          <span className="adm-alert-names">
-            {hotAlerts.slice(0, 3).map((l) => l.nome || "Sem nome").join(", ")}
-            {hotAlerts.length > 3 && ` +${hotAlerts.length - 3}`}
-          </span>
-        </div>
-      )}
+              {/* Col 3: Tier pie */}
+              <div className="adm-widget">
+                <div className="adm-chart-title">POR TIER</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <PieChart>
+                    <Pie data={tierPie} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      {tierPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
 
-      {/* ═══ ANALYTICS TAB ═══ */}
-      {tab === "analytics" && (
-        <div className="adm-analytics">
-          {/* Row 1: Line + Pie */}
-          <div className="adm-chart-row">
-            <div className="adm-chart-card wide">
-              <div className="adm-chart-title">LEADS POR DIA (14 DIAS)</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={dailyChart}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
-                  <XAxis dataKey="date" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 11 }} />
-                  <YAxis tick={{ fill: "rgba(226,221,212,.4)", fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
-                  <Line type="monotone" dataKey="leads" stroke="#C9A84C" strokeWidth={2} dot={{ r: 3, fill: "#C9A84C" }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="adm-chart-card">
-              <div className="adm-chart-title">DISTRIBUIÇÃO POR TIER</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <PieChart>
-                  <Pie data={tierPie} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                    {tierPie.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i]} />
+              {/* Col 4: Today + quick stats */}
+              <div className="adm-widget">
+                <div className="adm-chart-title">HOJE</div>
+                <div className="adm-today">
+                  <div className="adm-today-big">{todayStats.count}</div>
+                  <div className="adm-today-label">leads hoje</div>
+                  <div className="adm-today-hot">{todayStats.hot} hot</div>
+                </div>
+                <div className="adm-mini-stats">
+                  <div><span className="adm-mini-num">{needsAttention.length}</span><span className="adm-mini-label">aguardando contato</span></div>
+                  <div><span className="adm-mini-num">{stats.contacted}</span><span className="adm-mini-label">contactados</span></div>
+                </div>
+              </div>
+
+              {/* Row 2: Score histogram */}
+              <div className="adm-widget">
+                <div className="adm-chart-title">DISTRIBUIÇÃO DE SCORE</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={scoreDist}>
+                    <XAxis dataKey="range" tick={tickSmall} />
+                    <YAxis tick={tickSmall} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {scoreDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Funnel */}
+              <div className="adm-widget">
+                <div className="adm-chart-title">FUNIL DE CONVERSÃO</div>
+                <ResponsiveContainer width="100%" height={160}>
+                  <FunnelChart>
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                      <LabelList position="center" fill="#fff" fontSize={11} formatter={(v: unknown) => (Number(v) > 0 ? String(v) : "")} />
+                    </Funnel>
+                  </FunnelChart>
+                </ResponsiveContainer>
+                <div className="adm-funnel-labels">{funnelData.map((d, i) => <span key={i} style={{ color: d.fill }}>{d.name}</span>)}</div>
+              </div>
+
+              {/* Needs attention */}
+              <div className="adm-widget span2">
+                <div className="adm-chart-title">PRECISAM DE ATENÇÃO</div>
+                {needsAttention.length === 0 ? (
+                  <div className="adm-empty-sm">Tudo em dia!</div>
+                ) : (
+                  <div className="adm-mini-list">
+                    {needsAttention.map((l) => (
+                      <div key={l.id} className="adm-mini-card" onClick={() => setSelectedLead(l)}>
+                        <div className="adm-mini-card-score" style={{ borderColor: TIER_COLORS[(l.tier || "cold") as keyof typeof TIER_COLORS] }}>{l.internal_score || 0}</div>
+                        <div className="adm-mini-card-info">
+                          <span className="adm-mini-card-name">{l.nome || "Sem nome"}</span>
+                          <span className="adm-mini-card-meta">{(l.mercado || "").slice(0, 30)} · {l.created_at ? timeAgo(l.created_at) : ""}</span>
+                        </div>
+                        <span className={`adm-card-tier ${l.tier}`}>{(l.tier || "cold").toUpperCase()}</span>
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
-                </PieChart>
-              </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Row 2: Faturamento + Status */}
-          <div className="adm-chart-row">
-            <div className="adm-chart-card">
-              <div className="adm-chart-title">POR FATURAMENTO</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={fatChart} layout="vertical">
-                  <XAxis type="number" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 11 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="faixa" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 10 }} width={100} />
-                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
-                  <Bar dataKey="count" fill="#C9A84C" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            {/* Recent leads section below */}
+            <div className="adm-section-title">LEADS RECENTES</div>
+            <div className="adm-list">
+              {recentLeads.map((lead) => (
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => setSelectedLead(lead)}>
+                  <div className="adm-card-left">
+                    <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
+                  </div>
+                  <div className="adm-card-center">
+                    <div className="adm-card-top">
+                      <span className="adm-card-name">{lead.nome || "Sem nome"}</span>
+                      <span className={`adm-card-tier ${lead.tier || "cold"}`}>{(lead.tier || "cold").toUpperCase()}</span>
+                      {lead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
+                    </div>
+                    <div className="adm-card-meta">
+                      <span>{(lead.mercado || "—").slice(0, 45)}</span>
+                      <span>{lead.faturamento || ""}</span>
+                      <span>{lead.whatsapp}</span>
+                    </div>
+                  </div>
+                  <div className="adm-card-right"><span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span></div>
+                </div>
+              ))}
+              <button className="adm-view-all" onClick={() => setPage("leads")}>VER TODOS OS LEADS</button>
             </div>
-            <div className="adm-chart-card">
-              <div className="adm-chart-title">STATUS DE CONTATO</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={statusChart}>
-                  <XAxis dataKey="status" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 10 }} />
-                  <YAxis tick={{ fill: "rgba(226,221,212,.4)", fontSize: 11 }} allowDecimals={false} />
-                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {statusChart.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+          </>
+        )}
 
-          {/* Row 3: Funnel + Urgência */}
-          <div className="adm-chart-row">
-            <div className="adm-chart-card">
-              <div className="adm-chart-title">FUNIL DE CONVERSÃO</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <FunnelChart>
-                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
-                  <Funnel dataKey="value" data={funnelData} isAnimationActive>
-                    <LabelList position="center" fill="#fff" fontSize={12} formatter={(v: unknown) => (Number(v) > 0 ? String(v) : "")} />
-                  </Funnel>
-                </FunnelChart>
-              </ResponsiveContainer>
-              <div className="adm-funnel-labels">
-                {funnelData.map((d, i) => (
-                  <span key={i} style={{ color: d.fill }}>{d.name}</span>
+        {/* ═══ ANALYTICS PAGE ═══ */}
+        {page === "analytics" && (
+          <div className="adm-analytics">
+            <div className="adm-chart-row">
+              <div className="adm-chart-card wide">
+                <div className="adm-chart-title">LEADS POR DIA (14 DIAS)</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={dailyChart}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
+                    <XAxis dataKey="date" tick={tickStyle} />
+                    <YAxis tick={tickStyle} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Line type="monotone" dataKey="leads" stroke="#C9A84C" strokeWidth={2} dot={{ r: 3, fill: "#C9A84C" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">DISTRIBUIÇÃO POR TIER</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={tierPie} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      {tierPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="adm-chart-row">
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">POR FATURAMENTO</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={fatChart} layout="vertical">
+                    <XAxis type="number" tick={tickStyle} allowDecimals={false} />
+                    <YAxis type="category" dataKey="faixa" tick={tickSmall} width={100} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" fill="#C9A84C" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">STATUS DE CONTATO</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={statusChart}>
+                    <XAxis dataKey="status" tick={tickSmall} />
+                    <YAxis tick={tickStyle} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {statusChart.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="adm-chart-row">
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">FUNIL DE CONVERSÃO</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <FunnelChart>
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                      <LabelList position="center" fill="#fff" fontSize={12} formatter={(v: unknown) => (Number(v) > 0 ? String(v) : "")} />
+                    </Funnel>
+                  </FunnelChart>
+                </ResponsiveContainer>
+                <div className="adm-funnel-labels">{funnelData.map((d, i) => <span key={i} style={{ color: d.fill }}>{d.name}</span>)}</div>
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">POR URGÊNCIA</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={urgChart} layout="vertical">
+                    <XAxis type="number" tick={tickStyle} allowDecimals={false} />
+                    <YAxis type="category" dataKey="urgencia" tick={tickSmall} width={130} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" fill="#A78BFA" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="adm-chart-row">
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">DISTRIBUIÇÃO DE SCORE</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={scoreDist}>
+                    <XAxis dataKey="range" tick={tickSmall} />
+                    <YAxis tick={tickStyle} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {scoreDist.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">POR INVESTIMENTO</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={invChart} layout="vertical">
+                    <XAxis type="number" tick={tickStyle} allowDecimals={false} />
+                    <YAxis type="category" dataKey="inv" tick={tickSmall} width={110} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" fill="#00E5FF" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            <div className="adm-chart-card full">
+              <div className="adm-chart-title">TOP MERCADOS</div>
+              <div className="adm-markets">
+                {topMarkets.map((m, i) => (
+                  <div key={i} className="adm-market-row">
+                    <span className="adm-market-rank">#{i + 1}</span>
+                    <span className="adm-market-name">{m.market}</span>
+                    <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${(m.count / (topMarkets[0]?.count || 1)) * 100}%` }} /></div>
+                    <span className="adm-market-count">{m.count}</span>
+                  </div>
                 ))}
               </div>
             </div>
-            <div className="adm-chart-card">
-              <div className="adm-chart-title">POR URGÊNCIA</div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={urgChart} layout="vertical">
-                  <XAxis type="number" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 11 }} allowDecimals={false} />
-                  <YAxis type="category" dataKey="urgencia" tick={{ fill: "rgba(226,221,212,.4)", fontSize: 10 }} width={130} />
-                  <Tooltip contentStyle={{ background: "#0D1117", border: "1px solid rgba(201,168,76,.2)", color: "#E2DDD4" }} />
-                  <Bar dataKey="count" fill="#A78BFA" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
+            {bestMarkets.length > 0 && (
+              <div className="adm-chart-card full">
+                <div className="adm-chart-title">MERCADOS COM MELHOR TAXA HOT</div>
+                <div className="adm-markets">
+                  {bestMarkets.map((m, i) => (
+                    <div key={i} className="adm-market-row">
+                      <span className="adm-market-rank">#{i + 1}</span>
+                      <span className="adm-market-name">{m.market}</span>
+                      <div className="adm-market-bar"><div className="adm-market-fill" style={{ width: `${m.rate}%`, background: "linear-gradient(90deg,#F97316,rgba(249,115,22,.4))" }} /></div>
+                      <span className="adm-market-count">{m.rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Row 4: Top Markets */}
-          <div className="adm-chart-card full">
-            <div className="adm-chart-title">TOP MERCADOS</div>
-            <div className="adm-markets">
-              {topMarkets.map((m, i) => (
-                <div key={i} className="adm-market-row">
-                  <span className="adm-market-rank">#{i + 1}</span>
-                  <span className="adm-market-name">{m.market}</span>
-                  <div className="adm-market-bar">
-                    <div className="adm-market-fill" style={{ width: `${(m.count / (topMarkets[0]?.count || 1)) * 100}%` }} />
+        {/* ═══ LEADS PAGE ═══ */}
+        {page === "leads" && (
+          <>
+            <div className="adm-toolbar">
+              <input className="adm-search" type="text" placeholder="Buscar por nome, mercado ou WhatsApp..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <div className="adm-toolbar-right">
+                <select className="adm-sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
+                  <option value="date">Mais recentes</option>
+                  <option value="score">Maior score</option>
+                  <option value="tier">Por tier</option>
+                  <option value="name">A-Z</option>
+                </select>
+                <div className="adm-filters">
+                  {(["all", "hot", "warm", "cold"] as const).map((f) => (
+                    <button key={f} className={`adm-filter${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
+                      {f === "all" ? "Todos" : f.toUpperCase()} {f !== "all" && <span className="adm-filter-count">{f === "hot" ? stats.hot : f === "warm" ? stats.warm : stats.cold}</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="adm-list">
+              {filtered.length === 0 && <div className="adm-empty">{loading ? "Carregando..." : "Nenhum lead encontrado."}</div>}
+              {filtered.map((lead) => (
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => setSelectedLead(lead)}>
+                  <div className="adm-card-left">
+                    <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
                   </div>
-                  <span className="adm-market-count">{m.count}</span>
+                  <div className="adm-card-center">
+                    <div className="adm-card-top">
+                      <span className="adm-card-name">{lead.nome || "Sem nome"}</span>
+                      <span className={`adm-card-tier ${lead.tier || "cold"}`}>{(lead.tier || "cold").toUpperCase()}</span>
+                      {lead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
+                      {lead.contact_status && lead.contact_status !== "novo" && (
+                        <span className="adm-card-status" style={{ color: CONTACT_COLORS[lead.contact_status] }}>{CONTACT_LABELS[lead.contact_status]}</span>
+                      )}
+                    </div>
+                    <div className="adm-card-meta">
+                      <span>{(lead.mercado || "—").slice(0, 45)}</span>
+                      <span>{lead.faturamento || ""}</span>
+                      <span>{lead.whatsapp}</span>
+                    </div>
+                  </div>
+                  <div className="adm-card-right"><span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span></div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
 
-      {/* ═══ LEADS TAB ═══ */}
-      {tab === "leads" && (
-        <>
-          {/* Toolbar: search + sort + filters */}
-          <div className="adm-toolbar">
-            <input
-              className="adm-search"
-              type="text"
-              placeholder="Buscar por nome, mercado ou WhatsApp..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <div className="adm-toolbar-right">
-              <select className="adm-sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
-                <option value="date">Mais recentes</option>
-                <option value="score">Maior score</option>
-                <option value="tier">Por tier</option>
-                <option value="name">A-Z</option>
-              </select>
-              <div className="adm-filters">
-                {(["all", "hot", "warm", "cold"] as const).map((f) => (
-                  <button key={f} className={`adm-filter${filter === f ? " active" : ""}`} onClick={() => setFilter(f)}>
-                    {f === "all" ? "Todos" : f.toUpperCase()} {f !== "all" && <span className="adm-filter-count">{f === "hot" ? stats.hot : f === "warm" ? stats.warm : stats.cold}</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Lead list */}
-          <div className="adm-list">
-            {filtered.length === 0 && (
-              <div className="adm-empty">{loading ? "Carregando..." : "Nenhum lead encontrado."}</div>
-            )}
-            {filtered.map((lead) => (
-              <div key={lead.id} className={`adm-card ${lead.tier || "warm"}`} onClick={() => setSelectedLead(lead)}>
-                <div className="adm-card-left">
-                  <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "warm") as keyof typeof TIER_COLORS] }}>
-                    {lead.internal_score || 0}
-                  </div>
-                </div>
-                <div className="adm-card-center">
-                  <div className="adm-card-top">
-                    <span className="adm-card-name">{lead.nome || "Sem nome"}</span>
-                    <span className={`adm-card-tier ${lead.tier || "warm"}`}>{(lead.tier || "warm").toUpperCase()}</span>
-                    {lead.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
-                    {lead.contact_status && lead.contact_status !== "novo" && (
-                      <span className="adm-card-status" style={{ color: CONTACT_COLORS[lead.contact_status] }}>
-                        {CONTACT_LABELS[lead.contact_status]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="adm-card-meta">
-                    <span>{(lead.mercado || "—").slice(0, 45)}</span>
-                    <span>{lead.faturamento || ""}</span>
-                    <span>{lead.whatsapp}</span>
-                  </div>
-                </div>
-                <div className="adm-card-right">
-                  <span className="adm-card-time">{lead.created_at ? timeAgo(lead.created_at) : ""}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      </main>
 
       {/* ═══ DETAIL MODAL ═══ */}
       {selectedLead && (
