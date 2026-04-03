@@ -29,6 +29,21 @@ interface Lead {
   formsapp_at: string | null;
 }
 
+interface CalcEvent {
+  id: number;
+  session_id: string;
+  event: string;
+  step: string;
+  device: string;
+  browser: string;
+  os: string;
+  language: string;
+  referrer: string;
+  screen_width: number;
+  country: string;
+  created_at: string;
+}
+
 type SortKey = "date" | "score" | "tier" | "name";
 type ContactStatus = "" | "novo" | "contactado" | "agendou" | "sem_resposta" | "descartado";
 
@@ -78,7 +93,12 @@ function tierOrder(tier: string): number {
 // ─── INFO TOOLTIP COMPONENT ─────────────────────────────────────────────
 
 function InfoTip({ text }: { text: string }) {
-  return <span className="adm-info-tip" title={text}>i</span>;
+  return (
+    <span className="adm-info-tip">
+      i
+      <span className="adm-info-balloon">{text}</span>
+    </span>
+  );
 }
 
 // ─── ADMIN PASSWORD ─────────────────────────────────────────────────────────
@@ -133,6 +153,18 @@ export default function AdminDashboard() {
   }, [authed, fetchLeads]);
 
   const [page, setPage] = useState<"home" | "leads" | "analytics">("home");
+  const [calcEvents, setCalcEvents] = useState<CalcEvent[]>([]);
+
+  const fetchCalcAnalytics = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/analytics");
+      if (res.ok) setCalcEvents(await res.json());
+    } catch (e) { console.error("Calc analytics fetch:", e); }
+  }, []);
+
+  useEffect(() => {
+    if (authed && page === "analytics" && calcEvents.length === 0) fetchCalcAnalytics();
+  }, [authed, page, calcEvents.length, fetchCalcAnalytics]);
 
   // ─── DERIVED DATA ─────────────────────────────────────────────────────────
 
@@ -339,6 +371,111 @@ export default function AdminDashboard() {
         new Date(l.created_at).getTime() < oneHourAgo
     );
   }, [leads]);
+
+  // ─── CALC ANALYTICS DERIVED DATA ────────────────────────────────────────
+
+  const calcStats = useMemo(() => {
+    const sessions = new Set(calcEvents.map((e) => e.session_id)).size;
+    const pageviews = calcEvents.filter((e) => e.event === "pageview").length;
+    const completions = calcEvents.filter((e) => e.event === "complete").length;
+    const completionRate = pageviews > 0 ? Math.round((completions / pageviews) * 100) : 0;
+    return { sessions, pageviews, completions, completionRate };
+  }, [calcEvents]);
+
+  // Device breakdown
+  const deviceChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const d = e.device || "unknown";
+        map[d] = (map[d] || 0) + 1;
+      }
+    });
+    return Object.entries(map).map(([name, value]) => ({ name, value }));
+  }, [calcEvents]);
+
+  const DEVICE_COLORS = ["#C9A84C", "#3B82F6", "#F97316", "#A78BFA"];
+
+  // Browser breakdown
+  const browserChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const b = e.browser || "unknown";
+        map[b] = (map[b] || 0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+  }, [calcEvents]);
+
+  // Step funnel (how many reached each step)
+  const stepFunnel = useMemo(() => {
+    const stepOrder = ["0", "1", "1b", "2", "3", "4", "5a", "5b", "5c", "6", "7", "8", "9"];
+    const stepLabels: Record<string, string> = {
+      "0": "Landing", "1": "Mercado", "1b": "Confirmação", "2": "Dores", "3": "Desejos",
+      "4": "Análise", "5a": "Ideia 1", "5b": "Ideia 2", "5c": "Ideia 3", "6": "Qualificação",
+      "7": "Plano 90d", "8": "Score", "9": "Final",
+    };
+    const sessionSteps = new Map<string, Set<string>>();
+    calcEvents.forEach((e) => {
+      if (!sessionSteps.has(e.session_id)) sessionSteps.set(e.session_id, new Set());
+      sessionSteps.get(e.session_id)!.add(e.step);
+    });
+    return stepOrder.map((step) => {
+      let count = 0;
+      sessionSteps.forEach((steps) => { if (steps.has(step)) count++; });
+      return { step: stepLabels[step] || step, count };
+    });
+  }, [calcEvents]);
+
+  // Views per day (last 14 days)
+  const calcDailyChart = useMemo(() => {
+    const days: Record<string, number> = {};
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days[d.toISOString().slice(5, 10)] = 0;
+    }
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && e.created_at) {
+        const key = e.created_at.slice(5, 10);
+        if (days[key] !== undefined) days[key]++;
+      }
+    });
+    return Object.entries(days).map(([date, count]) => ({ date, views: count }));
+  }, [calcEvents]);
+
+  // OS breakdown
+  const osChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const o = e.os || "unknown";
+        map[o] = (map[o] || 0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value]) => ({ name, value }));
+  }, [calcEvents]);
+
+  // Language breakdown
+  const langChart = useMemo(() => {
+    const map: Record<string, number> = {};
+    const seen = new Set<string>();
+    calcEvents.forEach((e) => {
+      if (e.event === "pageview" && !seen.has(e.session_id)) {
+        seen.add(e.session_id);
+        const l = e.language || "unknown";
+        map[l] = (map[l] || 0) + 1;
+      }
+    });
+    return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([lang, count]) => ({ lang, count }));
+  }, [calcEvents]);
 
   // ─── ACTIONS ──────────────────────────────────────────────────────────────
 
@@ -684,6 +821,98 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+            {/* ═══ CALCULATOR ANALYTICS ═══ */}
+            <div className="adm-section-divider" />
+            <div className="adm-section-title">ANALYTICS DA CALCULADORA</div>
+
+            {/* Calc KPIs */}
+            <div className="adm-calc-kpis">
+              <div className="adm-kpi"><div className="adm-kpi-num">{calcStats.sessions}</div><div className="adm-kpi-label">Sessões <InfoTip text="Visitantes únicos que abriram a calculadora. Cada sessão é um navegador diferente." /></div></div>
+              <div className="adm-kpi"><div className="adm-kpi-num">{calcStats.pageviews}</div><div className="adm-kpi-label">Pageviews <InfoTip text="Total de vezes que a landing page foi aberta (inclui revisitas)." /></div></div>
+              <div className="adm-kpi"><div className="adm-kpi-num">{calcStats.completions}</div><div className="adm-kpi-label">Completaram <InfoTip text="Quantos chegaram até o final (Step 9 - resultado final)." /></div></div>
+              <div className="adm-kpi accent"><div className="adm-kpi-num">{calcStats.completionRate}%</div><div className="adm-kpi-label">Taxa Conclusão <InfoTip text="Porcentagem de quem abriu a calculadora e chegou até o final." /></div></div>
+            </div>
+
+            {/* Row: Views per day + Step funnel */}
+            <div className="adm-chart-row">
+              <div className="adm-chart-card wide">
+                <div className="adm-chart-title">ACESSOS POR DIA (14 DIAS)</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={calcDailyChart}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,.06)" />
+                    <XAxis dataKey="date" tick={tickStyle} />
+                    <YAxis tick={tickStyle} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Line type="monotone" dataKey="views" stroke="#00E5FF" strokeWidth={2} dot={{ r: 3, fill: "#00E5FF" }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">POR DISPOSITIVO</div>
+                <ResponsiveContainer width="100%" height={220}>
+                  <PieChart>
+                    <Pie data={deviceChart} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={4} dataKey="value" label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                      {deviceChart.map((_, i) => <Cell key={i} fill={DEVICE_COLORS[i % DEVICE_COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip contentStyle={tooltipStyle} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Step funnel - full width */}
+            <div className="adm-chart-card full">
+              <div className="adm-chart-title">FUNIL POR ETAPA (QUANTOS CHEGARAM EM CADA STEP)</div>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={stepFunnel}>
+                  <XAxis dataKey="step" tick={tickSmall} interval={0} angle={-30} textAnchor="end" height={60} />
+                  <YAxis tick={tickStyle} allowDecimals={false} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="count" fill="#C9A84C" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Row: Browser + OS */}
+            <div className="adm-chart-row">
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">POR NAVEGADOR</div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={browserChart} layout="vertical">
+                    <XAxis type="number" tick={tickStyle} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" tick={tickSmall} width={80} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="value" fill="#A78BFA" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="adm-chart-card">
+                <div className="adm-chart-title">POR SISTEMA OPERACIONAL</div>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={osChart} layout="vertical">
+                    <XAxis type="number" tick={tickStyle} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" tick={tickSmall} width={80} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="value" fill="#22C55E" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Language */}
+            {langChart.length > 0 && (
+              <div className="adm-chart-card full">
+                <div className="adm-chart-title">POR IDIOMA</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={langChart} layout="vertical">
+                    <XAxis type="number" tick={tickStyle} allowDecimals={false} />
+                    <YAxis type="category" dataKey="lang" tick={tickSmall} width={80} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" fill="#00E5FF" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             )}
           </div>
