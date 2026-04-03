@@ -11,6 +11,73 @@ import type {
   LeadResult,
 } from "@/lib/types";
 
+// ─── ANALYTICS ──────────────────────────────────────────────────────────────
+
+function getSessionId(): string {
+  if (typeof window === "undefined") return "";
+  let id = sessionStorage.getItem("_auid");
+  if (!id) {
+    id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    sessionStorage.setItem("_auid", id);
+  }
+  return id;
+}
+
+function detectDevice(): string {
+  const ua = navigator.userAgent;
+  if (/iPad|tablet/i.test(ua) || ((/Android/i.test(ua)) && !/Mobile/i.test(ua))) return "tablet";
+  if (/Mobile|iPhone|Android.*Mobile|webOS|iPod/i.test(ua)) return "mobile";
+  return "desktop";
+}
+
+function detectBrowser(): string {
+  const ua = navigator.userAgent;
+  if (/Edg\//i.test(ua)) return "Edge";
+  if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) return "Chrome";
+  if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) return "Safari";
+  if (/Firefox/i.test(ua)) return "Firefox";
+  return "Other";
+}
+
+function detectOS(): string {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/i.test(ua)) return "iOS";
+  if (/Android/i.test(ua)) return "Android";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/Mac OS/i.test(ua)) return "Mac";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "Other";
+}
+
+function trackEvent(event: string, step: string | number) {
+  try {
+    const payload = JSON.stringify({
+      session_id: getSessionId(),
+      event,
+      step: String(step),
+      device: detectDevice(),
+      browser: detectBrowser(),
+      os: detectOS(),
+      language: navigator.language || "",
+      referrer: document.referrer || "",
+      screen_width: window.screen?.width || 0,
+    });
+
+    const blob = new Blob([payload], { type: "application/json" });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/api/analytics", blob);
+    } else {
+      fetch("/api/analytics", {
+        method: "POST",
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    }
+  } catch {
+    // analytics must never break the app
+  }
+}
+
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
 const DORES_OPTIONS = [
@@ -496,6 +563,11 @@ export default function Calculator() {
   const apiDoneRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Analytics: track initial pageview ──
+  useEffect(() => {
+    trackEvent("pageview", "0");
+  }, []);
+
   const set = useCallback(
     (k: keyof WizardData, v: WizardData[keyof WizardData]) =>
       setData((d) => ({ ...d, [k]: v })),
@@ -517,6 +589,8 @@ export default function Calculator() {
   const goTo = useCallback((s: WizardStep) => {
     setStep(s);
     setError("");
+    // Analytics: track step navigation
+    trackEvent(s === 9 ? "complete" : "step", s);
     // Force scroll to absolute top
     setTimeout(() => {
       window.scrollTo(0, 0);
