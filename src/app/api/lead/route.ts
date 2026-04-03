@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSupabase } from "@/lib/supabase";
 
 interface LeadInput {
   nome: string;
@@ -65,7 +66,6 @@ function calcQualification(data: LeadInput): {
 
   const qualified = score >= 50;
 
-  // Map score to top percent (higher score = more exclusive = lower percent)
   let topPercent: number;
   if (score >= 80) topPercent = 5;
   else if (score >= 70) topPercent = 8;
@@ -90,14 +90,28 @@ export async function POST(request: NextRequest) {
 
     const result = calcQualification(data);
 
-    // Log lead (Vercel has read-only filesystem, so just log)
-    const lead = {
-      ...data,
-      ...result,
-      timestamp: new Date().toISOString(),
-    };
+    // Save to Supabase
+    const supabase = getSupabase();
+    const { error: dbError } = supabase ? await supabase.from("leads").insert({
+      nome: data.nome,
+      mercado: data.mercado,
+      whatsapp: data.whatsapp,
+      faturamento: data.faturamento,
+      equipe: data.equipe,
+      anos_experiencia: data.anosExperiencia,
+      investimento: data.investimento,
+      dores: data.dores,
+      qualified: result.qualified,
+      internal_score: result.internalScore,
+      top_percent: result.topPercent,
+    }) : { error: null };
 
-    console.log("New lead:", JSON.stringify(lead, null, 2));
+    if (dbError) {
+      console.error("Supabase insert error:", dbError);
+      // Don't fail the request if DB save fails - still return result
+    }
+
+    console.log("New lead:", data.nome, data.whatsapp, result.qualified ? "QUALIFIED" : "nurture");
 
     return NextResponse.json(result);
   } catch (error) {
