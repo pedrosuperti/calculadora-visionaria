@@ -53,7 +53,7 @@ export async function POST() {
     }
 
     if (!unmatched || unmatched.length === 0) {
-      return NextResponse.json({ status: "ok", message: "No unmatched submissions to sync", synced: 0 });
+      return NextResponse.json({ status: "ok", message: "Nenhuma submissao pendente para sincronizar.", total_unmatched: 0, synced: 0, still_unmatched: 0, results: [] });
     }
 
     // Fetch all leads

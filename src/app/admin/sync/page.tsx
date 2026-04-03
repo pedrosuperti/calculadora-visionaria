@@ -526,10 +526,10 @@ export default function SyncPage() {
                   <p style={{ color: "#22C55E" }}>Vinculados: <strong>{importResult.matched}</strong></p>
                   <p style={{ color: "#EAB308" }}>Ja vinculados antes: <strong>{importResult.already_matched}</strong></p>
                   <p style={{ color: "#EF4444" }}>Nao encontrados (salvos): <strong>{importResult.unmatched_stored}</strong></p>
-                  {importResult.results.filter((r) => r.status === "matched").length > 0 && (
+                  {(importResult.results || []).filter((r) => r.status === "matched").length > 0 && (
                     <div style={{ marginTop: 8 }}>
                       <strong>Matches:</strong>
-                      {importResult.results.filter((r) => r.status === "matched").map((r, i) => (
+                      {(importResult.results || []).filter((r) => r.status === "matched").map((r, i) => (
                         <div key={i} style={{ color: "#22C55E", marginLeft: 12 }}>#{r.index} &rarr; {r.lead_name} (ID {r.lead_id})</div>
                       ))}
                     </div>
@@ -553,10 +553,10 @@ export default function SyncPage() {
                   <p>Total pendentes: <strong>{syncResult.total_unmatched}</strong></p>
                   <p style={{ color: "#22C55E" }}>Sincronizados agora: <strong>{syncResult.synced}</strong></p>
                   <p style={{ color: "#EF4444" }}>Ainda sem match: <strong>{syncResult.still_unmatched}</strong></p>
-                  {syncResult.results.filter((r) => r.method !== "no_match").length > 0 && (
+                  {(syncResult.results || []).filter((r) => r.method !== "no_match").length > 0 && (
                     <div style={{ marginTop: 8 }}>
                       <strong>Matches:</strong>
-                      {syncResult.results.filter((r) => r.method !== "no_match").map((r, i) => (
+                      {(syncResult.results || []).filter((r) => r.method !== "no_match").map((r, i) => (
                         <div key={i} style={{ color: "#22C55E", marginLeft: 12 }}>{r.lead_name} (ID {r.lead_id}) &mdash; via {r.method}</div>
                       ))}
                     </div>
