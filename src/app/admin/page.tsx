@@ -1399,11 +1399,11 @@ export default function AdminDashboard() {
                 <h2 className="adm-ficha-section-title">Dados do Perfil</h2>
                 <div className="adm-ficha-grid">
                   <div className="adm-modal-field"><label>WhatsApp</label><a href={`https://wa.me/${(dl.whatsapp || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">{dl.whatsapp}</a></div>
-                  <div className="adm-modal-field"><label>Mercado</label><span>{dl.mercado || "—"}</span></div>
                   <div className="adm-modal-field"><label>Faturamento</label><span>{dl.faturamento || "—"}</span></div>
                   <div className="adm-modal-field"><label>Equipe</label><span>{dl.equipe || "—"}</span></div>
                   <div className="adm-modal-field"><label>Urgência</label><span>{dl.urgencia || "—"}</span></div>
                   <div className="adm-modal-field"><label>Investimento</label><span>{dl.investimento || "—"}</span></div>
+                  <div className="adm-modal-field" style={{ gridColumn: "1 / -1" }}><label>Mercado</label><span>{dl.mercado || "—"}</span></div>
                 </div>
                 {dl.dores && dl.dores.length > 0 && (
                   <div className="adm-ficha-dores">
