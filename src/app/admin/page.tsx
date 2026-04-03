@@ -1626,10 +1626,6 @@ export default function AdminDashboard() {
                     </a>
                   </div>
                   <div className="adm-modal-field">
-                    <label>Mercado</label>
-                    <span>{selectedLead.mercado || "—"}</span>
-                  </div>
-                  <div className="adm-modal-field">
                     <label>Faturamento</label>
                     <span>{selectedLead.faturamento || "—"}</span>
                   </div>
@@ -1644,6 +1640,10 @@ export default function AdminDashboard() {
                   <div className="adm-modal-field">
                     <label>Investimento</label>
                     <span>{selectedLead.investimento || "—"}</span>
+                  </div>
+                  <div className="adm-modal-field full">
+                    <label>Mercado</label>
+                    <span>{selectedLead.mercado || "—"}</span>
                   </div>
                   <div className="adm-modal-field full">
                     <label>Dores</label>
