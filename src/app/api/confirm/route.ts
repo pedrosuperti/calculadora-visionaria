@@ -22,20 +22,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `Você é um analista de mercado especializado. Analise o mercado/setor descrito abaixo e retorne SOMENTE JSON válido, sem markdown.
+    const prompt = `Você é um analista de mercado especializado com acesso a dados de mercado brasileiros e globais. Analise o mercado/setor descrito abaixo e retorne SOMENTE JSON válido, sem markdown.
 
 ${imagem ? "A pessoa também enviou uma imagem da bio do Instagram dela. Use as informações da imagem para enriquecer a análise do mercado." : ""}
 
 Mercado descrito: "${mercado}"
 
+INSTRUÇÕES DE ANÁLISE:
+1. Identifique o setor ESPECÍFICO dessa pessoa (não genérico). Ex: se ela disse "dentista com clínica", o setor é "Odontologia Clínica", não "Saúde".
+2. O tam_estimado deve ser o TAM (Total Addressable Market) anual do setor NO BRASIL em reais.
+   - Use dados reais de mercado. Pesquise o tamanho real do setor.
+   - Exemplos de referência: Odontologia BR ~R$43 bilhões/ano, Arquitetura BR ~R$12 bilhões/ano, Personal Trainers BR ~R$8 bilhões/ano, Alimentação Saudável BR ~R$100 bilhões/ano.
+   - O valor deve ser CRÍVEL e VARIAR conforme o mercado. NÃO use sempre o mesmo número.
+   - Para nichos muito específicos, estime a fatia relevante do mercado total.
+3. A descrição deve mencionar o tamanho do mercado de forma impressionante mas honesta.
+
 Retorne:
 {
-  "setor_formatado": "nome do setor em português, claro e profissional",
-  "descricao": "2-3 frases descrevendo o que essa pessoa faz, para quem, e o tamanho da oportunidade. Termine com: a maioria dos profissionais desse mercado acessa menos de 2% do potencial real.",
+  "setor_formatado": "nome do setor em português, claro e profissional (ex: Odontologia Clínica, Arquitetura de Alto Padrão)",
+  "descricao": "2-3 frases descrevendo o que essa pessoa faz, para quem, e o tamanho da oportunidade. Inclua o dado de mercado. Termine com: a maioria dos profissionais desse mercado acessa menos de 2% do potencial real.",
   "tam_estimado": 0
 }
 
-O tam_estimado deve ser o TAM anual em reais do mercado no Brasil. Use dados reais. Retorne SOMENTE o JSON.`;
+IMPORTANTE: o tam_estimado deve ser um número realista em reais, sem aspas. Ex: 43000000000 para R$43 bilhões. Retorne SOMENTE o JSON.`;
 
     const content: Anthropic.MessageCreateParams["messages"][0]["content"] = [];
 
