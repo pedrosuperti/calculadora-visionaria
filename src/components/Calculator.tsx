@@ -485,7 +485,7 @@ export default function Calculator() {
             <div className="step-content">
               <div className="landing-author">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img className="landing-author-img" src="https://pedrosuperti.com.br/wp-content/uploads/2024/01/pedro-superti-perfil.webp" alt="Pedro Superti" onError={(e) => { (e.target as HTMLImageElement).src = "https://i.pravatar.cc/120?img=68"; }} />
+                <img className="landing-author-img" src="/pedro.jpg" alt="Pedro Superti" />
                 <div className="landing-author-info">
                   <div className="landing-author-name">Pedro Superti</div>
                   <div className="landing-author-role">Criador do Método V.I.S.O.R.</div>
