@@ -37,6 +37,9 @@ export interface IdeiaRiqueza {
   cuidados: string;
   usa_ia: boolean;
   como_usa_ia: string;
+  projecao_6m?: number;
+  projecao_12m?: number;
+  projecao_24m?: number;
 }
 
 // 90-day plan (Step 7)

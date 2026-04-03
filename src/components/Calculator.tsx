@@ -31,10 +31,10 @@ const DESEJOS_OPTIONS = [
 ];
 
 const DRILL_STEPS = [
-  "Analisando seu mercado...",
-  "Mapeando oportunidades escondidas...",
-  "Calculando riqueza disponível...",
-  "Selecionando as 3 melhores para você...",
+  { text: "Analisando seu mercado...", icon: "🔍" },
+  { text: "Mapeando oportunidades escondidas...", icon: "🗺️" },
+  { text: "Calculando riqueza disponível...", icon: "💰" },
+  { text: "Selecionando as 3 melhores para você...", icon: "🏆" },
 ];
 
 const FATURAMENTO_OPTIONS = [
@@ -65,6 +65,13 @@ function fmt(val: number): string {
   return `R$ ${val.toFixed(0)}`;
 }
 
+function fmtShort(val: number): string {
+  if (!val) return "R$0";
+  if (val >= 1e6) return `R$${(val / 1e6).toFixed(1)}M`;
+  if (val >= 1e3) return `R$${(val / 1e3).toFixed(0)}k`;
+  return `R$${val.toFixed(0)}`;
+}
+
 function stepToIndex(step: WizardStep): number {
   const map: Record<string, number> = {
     "0": -1, "1": 0, "1b": 1, "2": 2, "3": 3, "4": 4,
@@ -74,6 +81,15 @@ function stepToIndex(step: WizardStep): number {
 }
 
 const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL || "#";
+
+// Map step to previous step for back navigation
+function prevStep(step: WizardStep): WizardStep | null {
+  const map: Record<string, WizardStep> = {
+    "1": 0, "1b": 1, "2": "1b", "3": 2, "5a": 4, "5b": "5a", "5c": "5b",
+    "6": "5c", "7": 6, "8": 7, "9": 8,
+  };
+  return map[String(step)] ?? null;
+}
 
 // ─── PROGRESS DOTS ───────────────────────────────────────────────────────────
 
@@ -109,17 +125,10 @@ function ScoreCircle({
   return (
     <div className="score-circle-wrap" style={{ width: size, height: size }}>
       <svg className="score-circle-svg" width={size} height={size}>
-        <circle
-          className="score-circle-bg"
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-        />
+        <circle className="score-circle-bg" cx={size / 2} cy={size / 2} r={r} />
         <circle
           className="score-circle-fill"
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
+          cx={size / 2} cy={size / 2} r={r}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
         />
@@ -129,6 +138,42 @@ function ScoreCircle({
   );
 }
 
+// ─── MINI BAR CHART for projections ──────────────────────────────────────────
+
+function RevenueChart({ p6, p12, p24 }: { p6: number; p12: number; p24: number }) {
+  const max = Math.max(p6, p12, p24, 1);
+  const bars = [
+    { label: "6 meses", val: p6, pct: (p6 / max) * 100 },
+    { label: "12 meses", val: p12, pct: (p12 / max) * 100 },
+    { label: "24 meses", val: p24, pct: (p24 / max) * 100 },
+  ];
+  return (
+    <div className="rev-chart">
+      <div className="rev-chart-title">PROJEÇÃO DE FATURAMENTO</div>
+      <div className="rev-chart-bars">
+        {bars.map((b) => (
+          <div className="rev-bar-col" key={b.label}>
+            <div className="rev-bar-val">{fmtShort(b.val)}</div>
+            <div className="rev-bar-track">
+              <div className="rev-bar-fill" style={{ height: `${Math.max(b.pct, 8)}%` }} />
+            </div>
+            <div className="rev-bar-label">{b.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── BACK BUTTON ─────────────────────────────────────────────────────────────
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button className="back-btn" onClick={onClick} type="button">
+      ← Voltar
+    </button>
+  );
+}
 
 // ─── MAIN COMPONENT ─────────────────────────────────────────────────────────
 
@@ -184,6 +229,11 @@ export default function Calculator() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
+  const goBack = useCallback(() => {
+    const prev = prevStep(step);
+    if (prev !== null) goTo(prev);
+  }, [step, goTo]);
+
   // ── STEP 1 → 1b: Confirm market ──
   const handleConfirm = async () => {
     if (!data.mercado.trim()) return;
@@ -198,12 +248,15 @@ export default function Calculator() {
           imagem: data.bioImagem,
         }),
       });
-      if (!res.ok) throw new Error("Erro na API");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Erro na API");
+      }
       const result: ConfirmResult = await res.json();
       set("mercadoConfirmado", result);
       goTo("1b");
-    } catch {
-      setError("Erro ao analisar mercado. Tente novamente.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao analisar mercado. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -216,7 +269,6 @@ export default function Calculator() {
     setCounterVal(0);
     apiDoneRef.current = false;
 
-    // Start animation
     let i = 0;
     intervalRef.current = setInterval(() => {
       i++;
@@ -226,7 +278,6 @@ export default function Calculator() {
       }
     }, 2000);
 
-    // Start API call
     try {
       const res = await fetch("/api/diagnose", {
         method: "POST",
@@ -244,7 +295,6 @@ export default function Calculator() {
       setDiagnoseResult(result);
       apiDoneRef.current = true;
 
-      // Animate counter to real value
       const target = result.scores.riqueza_total;
       const duration = 2000;
       const start = Date.now();
@@ -260,9 +310,8 @@ export default function Calculator() {
       setError("Erro ao gerar diagnóstico. Tente novamente.");
       goTo(3);
     }
-  }, [data, goTo, set]);
+  }, [data, goTo]);
 
-  // Check when both animation and API are done
   useEffect(() => {
     if (
       step === 4 &&
@@ -305,12 +354,15 @@ export default function Calculator() {
           dores: data.dores,
         }),
       });
-      if (!res.ok) throw new Error("Erro na API");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || "Erro ao processar");
+      }
       const result: LeadResult = await res.json();
       setLeadResult(result);
       goTo(7);
-    } catch {
-      setError("Erro ao processar. Tente novamente.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao processar. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -344,18 +396,22 @@ export default function Calculator() {
                 Descubra quanta riqueza está escondida no seu mercado — e como desbloquear em 90 dias
               </div>
 
+              <div className="comparison-context">
+                Veja a diferença entre quem opera no modo tradicional e quem usa o método Visionário:
+              </div>
+
               <div className="comparison-card">
                 <div className="comparison-col bloqueada">
                   <div className="comparison-col-title">RIQUEZA BLOQUEADA</div>
                   {[
-                    ["Faturamento", "R$15k/mês"],
-                    ["Margem", "22%"],
-                    ["Horas/semana", "55h"],
-                    ["Fontes de receita", "1"],
-                    ["Valuation", "R$0"],
-                  ].map(([l, v]) => (
+                    ["Faturamento", "R$15k/mês", "📉"],
+                    ["Margem", "22%", "😰"],
+                    ["Horas/semana", "55h", "⏰"],
+                    ["Fontes de receita", "1", "🔒"],
+                    ["Valuation", "R$0", "❌"],
+                  ].map(([l, v, icon]) => (
                     <div className="comparison-row" key={l}>
-                      <span className="comparison-label">{l}</span>
+                      <span className="comparison-label"><span className="comp-icon">{icon}</span>{l}</span>
                       <span className="comparison-val">{v}</span>
                     </div>
                   ))}
@@ -363,14 +419,14 @@ export default function Calculator() {
                 <div className="comparison-col desbloqueada">
                   <div className="comparison-col-title">RIQUEZA DESBLOQUEADA</div>
                   {[
-                    ["Faturamento", "R$85k/mês"],
-                    ["Margem", "61%"],
-                    ["Horas/semana", "25h"],
-                    ["Fontes de receita", "4"],
-                    ["Valuation", "R$2.4M"],
-                  ].map(([l, v]) => (
+                    ["Faturamento", "R$85k/mês", "📈"],
+                    ["Margem", "61%", "🎯"],
+                    ["Horas/semana", "25h", "⚡"],
+                    ["Fontes de receita", "4", "🔓"],
+                    ["Valuation", "R$2.4M", "💎"],
+                  ].map(([l, v, icon]) => (
                     <div className="comparison-row" key={l}>
-                      <span className="comparison-label">{l}</span>
+                      <span className="comparison-label"><span className="comp-icon">{icon}</span>{l}</span>
                       <span className="comparison-val">{v}</span>
                     </div>
                   ))}
@@ -392,20 +448,30 @@ export default function Calculator() {
               </div>
 
               <button
-                className="btn-drill"
+                className={`btn-drill${!data.nome.trim() ? " btn-disabled" : ""}`}
                 disabled={!data.nome.trim()}
                 onClick={() => goTo(1)}
               >
                 DESCOBRIR MINHA RIQUEZA ESCONDIDA
               </button>
 
-              <div className="social-proof">Usado por mais de 30.000 visionários</div>
+              <div className="social-proof">
+                <div className="social-avatars">
+                  <div className="avatar" style={{background:"#C9A84C"}}>PS</div>
+                  <div className="avatar" style={{background:"#22C55E"}}>MR</div>
+                  <div className="avatar" style={{background:"#00E5FF"}}>AL</div>
+                  <div className="avatar" style={{background:"#F97316"}}>JC</div>
+                  <div className="avatar" style={{background:"#9333EA"}}>TF</div>
+                </div>
+                <span>Usado por mais de 30.000 visionários</span>
+              </div>
             </div>
           )}
 
           {/* ════════ STEP 1: MARKET ════════ */}
           {step === 1 && (
             <div className="step-content">
+              <BackButton onClick={goBack} />
               <div className="step-title">Qual é o seu mercado?</div>
               <div className="step-subtitle">
                 Descreva o que você faz e para quem. Quanto mais contexto, melhor a análise.
@@ -433,8 +499,14 @@ export default function Calculator() {
                   className="bio-upload-btn"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  📎 Anexar print da bio (opcional)
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="2" y="2" width="20" height="20" rx="5" />
+                    <circle cx="12" cy="12" r="4" />
+                    <path d="M18 6h.01" />
+                  </svg>
+                  Anexar print da bio do Instagram (opcional)
                 </button>
+                <div className="bio-hint">A IA lê sua bio para entender melhor seu negócio</div>
                 {data.bioImagem && (
                   <div className="bio-upload-preview">
                     <img src={data.bioImagem} alt="Bio preview" />
@@ -466,23 +538,45 @@ export default function Calculator() {
           {/* ════════ STEP 1b: CONFIRM ════════ */}
           {step === "1b" && data.mercadoConfirmado && (
             <div className="step-content">
+              <BackButton onClick={goBack} />
               <div className="step-title">Encontramos seu mercado</div>
               <div className="confirm-box">
                 <div className="confirm-sector">{data.mercadoConfirmado.setor_formatado}</div>
-                <div className="confirm-desc">{data.mercadoConfirmado.descricao}</div>
-                <div className="confirm-tam">
-                  Mercado estimado: {fmt(data.mercadoConfirmado.tam_estimado)}/ano
+                
+                <div className="confirm-stats">
+                  <div className="confirm-stat">
+                    <div className="confirm-stat-icon">🌍</div>
+                    <div>
+                      <div className="confirm-stat-label">Mercado estimado</div>
+                      <div className="confirm-stat-val">{fmt(data.mercadoConfirmado.tam_estimado)}/ano</div>
+                    </div>
+                  </div>
+                  <div className="confirm-stat">
+                    <div className="confirm-stat-icon">📊</div>
+                    <div>
+                      <div className="confirm-stat-label">Seu acesso atual</div>
+                      <div className="confirm-stat-val" style={{color: "var(--orange)"}}>Menos de 2%</div>
+                    </div>
+                  </div>
+                  <div className="confirm-stat">
+                    <div className="confirm-stat-icon">🚀</div>
+                    <div>
+                      <div className="confirm-stat-label">Potencial com IA</div>
+                      <div className="confirm-stat-val" style={{color: "var(--green)"}}>8-15x mais</div>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ fontSize: 13, color: "rgba(226,221,212,.55)", marginTop: 12, fontStyle: "italic" }}>
-                  A maioria dos profissionais desse mercado acessa menos de 2% desse potencial.
+
+                <div className="confirm-insight">
+                  A maioria dos profissionais desse mercado acessa menos de 2% do potencial real.
                 </div>
               </div>
               <div className="confirm-btns">
-                <button className="btn-drill" onClick={() => goTo(2)}>
-                  ISSO MESMO!
-                </button>
                 <button className="btn-sec" onClick={() => goTo(1)}>
                   QUERO REFORMULAR
+                </button>
+                <button className="btn-drill" onClick={() => goTo(2)}>
+                  ISSO MESMO!
                 </button>
               </div>
             </div>
@@ -491,6 +585,7 @@ export default function Calculator() {
           {/* ════════ STEP 2: DORES ════════ */}
           {step === 2 && (
             <div className="step-content">
+              <BackButton onClick={goBack} />
               <div className="step-title">O que mais te trava hoje?</div>
               <div className="step-subtitle">Selecione todas que se aplicam.</div>
 
@@ -530,6 +625,7 @@ export default function Calculator() {
           {/* ════════ STEP 3: DESEJOS ════════ */}
           {step === 3 && (
             <div className="step-content">
+              <BackButton onClick={goBack} />
               <div className="step-title">O que você gostaria de enxergar?</div>
               <div className="step-subtitle">Selecione todas que te interessam.</div>
 
@@ -578,7 +674,8 @@ export default function Calculator() {
                     className={`d-step ${i < drillingStep ? "done" : i === drillingStep ? "active" : ""}`}
                   >
                     <div className="d-dot" />
-                    <span>{i < drillingStep ? "✓ " : ""}{s}</span>
+                    <span className="d-step-icon">{s.icon}</span>
+                    <span>{i < drillingStep ? "✓ " : ""}{s.text}</span>
                     {i === 0 && i < drillingStep && data.mercadoConfirmado && (
                       <span className="drill-result">
                         Mercado: {data.mercadoConfirmado.setor_formatado}
@@ -633,8 +730,13 @@ export default function Calculator() {
             const nextStep: WizardStep = step === "5a" ? "5b" : step === "5b" ? "5c" : 6;
             const nextLabel = step === "5a" ? "VER PRÓXIMA IDEIA" : step === "5b" ? "VER MINHA 3ª IDEIA" : "VER MEU PLANO DE AÇÃO";
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const ideaAny = idea as any;
+            const hasProjection = ideaAny.projecao_6m || ideaAny.projecao_12m || ideaAny.projecao_24m;
+
             return (
               <div className="idea-screen step-content" key={step}>
+                <BackButton onClick={goBack} />
                 <div className="idea-header">
                   <div className="idea-badge">IDEIA #{num}</div>
                   <div className={`idea-ia-badge ${idea.usa_ia ? "com-ia" : "sem-ia"}`}>
@@ -646,32 +748,52 @@ export default function Calculator() {
                 <div className="idea-desc">{idea.descricao}</div>
 
                 <div className="idea-metrics">
-                  <div className="idea-metric">
-                    <div className="idea-metric-label">RIQUEZA DESBLOQUEADA</div>
-                    <div className="idea-metric-val gold">{fmt(idea.potencial_anual)}/ano</div>
+                  <div className="idea-metric gold-metric">
+                    <div className="idea-metric-icon">💰</div>
+                    <div>
+                      <div className="idea-metric-label">RIQUEZA DESBLOQUEADA</div>
+                      <div className="idea-metric-val gold">{fmt(idea.potencial_anual)}/ano</div>
+                    </div>
                   </div>
                   <div className="idea-metric">
-                    <div className="idea-metric-label">TEMPO DE RETORNO</div>
-                    <div className="idea-metric-val">{idea.tempo_retorno_dias} dias</div>
+                    <div className="idea-metric-icon">⏱️</div>
+                    <div>
+                      <div className="idea-metric-label">TEMPO DE RETORNO</div>
+                      <div className="idea-metric-val">{idea.tempo_retorno_dias} dias</div>
+                    </div>
                   </div>
                   <div className="idea-metric">
-                    <div className="idea-metric-label">CONCORRÊNCIA</div>
-                    <div className="idea-metric-val">{idea.concorrencia}</div>
+                    <div className="idea-metric-icon">🏟️</div>
+                    <div>
+                      <div className="idea-metric-label">CONCORRÊNCIA</div>
+                      <div className="idea-metric-val">{idea.concorrencia}</div>
+                    </div>
                   </div>
                   <div className="idea-metric">
-                    <div className="idea-metric-label">DIFICULDADE</div>
-                    <div className="idea-metric-val">{idea.dificuldade}</div>
+                    <div className="idea-metric-icon">🎚️</div>
+                    <div>
+                      <div className="idea-metric-label">DIFICULDADE</div>
+                      <div className="idea-metric-val">{idea.dificuldade}</div>
+                    </div>
                   </div>
                 </div>
 
+                {hasProjection && (
+                  <RevenueChart
+                    p6={ideaAny.projecao_6m || 0}
+                    p12={ideaAny.projecao_12m || 0}
+                    p24={ideaAny.projecao_24m || idea.potencial_anual}
+                  />
+                )}
+
                 <div className="idea-cuidados">
-                  <div className="idea-cuidados-label">CUIDADOS</div>
+                  <div className="idea-cuidados-label">⚠️ CUIDADOS</div>
                   <div className="idea-cuidados-text">{idea.cuidados}</div>
                 </div>
 
                 {idea.usa_ia && idea.como_usa_ia && (
                   <div className="idea-ia-detail">
-                    <div className="idea-ia-detail-label">COMO A IA É USADA</div>
+                    <div className="idea-ia-detail-label">🤖 COMO A IA É USADA</div>
                     <div className="idea-ia-detail-text">{idea.como_usa_ia}</div>
                   </div>
                 )}
@@ -686,6 +808,7 @@ export default function Calculator() {
           {/* ════════ STEP 6: QUALIFICATION ════════ */}
           {step === 6 && (
             <div className="step-content qual-form">
+              <BackButton onClick={goBack} />
               <div className="step-title">Para montar seu plano personalizado, preciso de mais contexto.</div>
               <div className="step-subtitle">Essas informações ajudam a IA a calibrar seu plano de 90 dias.</div>
 
@@ -737,7 +860,7 @@ export default function Calculator() {
                   />
                 </div>
                 <div className="f" style={{ marginBottom: 0 }}>
-                  <label>Investimento mensal</label>
+                  <label>Quanto pode investir no crescimento?</label>
                   <select
                     value={data.investimento}
                     onChange={(e) => set("investimento", e.target.value)}
@@ -768,9 +891,11 @@ export default function Calculator() {
           {/* ════════ STEP 7: PLANO 90 DIAS ════════ */}
           {step === 7 && diagnoseResult && (
             <div className="step-content">
+              <BackButton onClick={goBack} />
               <div className="step-title">{data.nome}, seu plano de desbloqueio de 90 dias</div>
 
               <div className="plano-intro">
+                <span className="plano-intro-icon">💡</span>
                 Uma das maiores janelas de oportunidade no mercado de{" "}
                 {data.mercadoConfirmado?.setor_formatado || "seu setor"} agora:{" "}
                 {diagnoseResult.plano.janela_ia}
@@ -778,25 +903,29 @@ export default function Calculator() {
 
               <div className="plano-roadmap">
                 <div className="plano-phase">
+                  <div className="plano-phase-icon">🎯</div>
                   <div className="plano-phase-label">SEMANAS 1–2</div>
                   <div className="plano-phase-desc">{diagnoseResult.plano.semanas_1_2}</div>
                 </div>
                 <div className="plano-phase">
+                  <div className="plano-phase-icon">🔧</div>
                   <div className="plano-phase-label">SEMANAS 3–4</div>
                   <div className="plano-phase-desc">{diagnoseResult.plano.semanas_3_4}</div>
                 </div>
                 <div className="plano-phase">
+                  <div className="plano-phase-icon">🚀</div>
                   <div className="plano-phase-label">MÊS 2</div>
                   <div className="plano-phase-desc">{diagnoseResult.plano.mes_2}</div>
                 </div>
                 <div className="plano-phase">
+                  <div className="plano-phase-icon">📈</div>
                   <div className="plano-phase-label">MÊS 3</div>
                   <div className="plano-phase-desc">{diagnoseResult.plano.mes_3}</div>
                 </div>
               </div>
 
               <div className="plano-reality">
-                Esse plano exige cerca de {diagnoseResult.plano.horas_semana} horas por semana de dedicação.
+                ⏰ Esse plano exige cerca de {diagnoseResult.plano.horas_semana} horas por semana de dedicação.
               </div>
 
               <button className="btn-drill" onClick={() => goTo(8)}>
@@ -808,6 +937,7 @@ export default function Calculator() {
           {/* ════════ STEP 8: DUAL SCORES ════════ */}
           {step === 8 && diagnoseResult && (
             <div className="step-content">
+              <BackButton onClick={goBack} />
               <div className="step-title">Seu diagnóstico completo</div>
 
               <div className="scores-container">
@@ -850,6 +980,7 @@ export default function Calculator() {
           {/* ════════ STEP 9: FINAL ════════ */}
           {step === 9 && diagnoseResult && (
             <div className="elegivel-section step-content">
+              <BackButton onClick={goBack} />
               {/* Summary card - screenshottable */}
               <div className="summary-card">
                 <div className="summary-header">
@@ -878,37 +1009,26 @@ export default function Calculator() {
                 <div className="summary-scores">
                   <div className="summary-score-item">
                     <div className="summary-score-label">SCORE ATUAL</div>
-                    <div
-                      className="summary-score-val"
-                      style={{ color: "var(--orange)" }}
-                    >
+                    <div className="summary-score-val" style={{ color: "var(--orange)" }}>
                       {diagnoseResult.scores.score_atual}
                     </div>
                   </div>
                   <div className="summary-score-item">
                     <div className="summary-score-label">SCORE VISIONÁRIO</div>
-                    <div
-                      className="summary-score-val"
-                      style={{ color: "var(--green)" }}
-                    >
+                    <div className="summary-score-val" style={{ color: "var(--green)" }}>
                       {diagnoseResult.scores.score_visionario}
                     </div>
                   </div>
                   <div className="summary-score-item">
                     <div className="summary-score-label">RIQUEZA TOTAL</div>
-                    <div
-                      className="summary-score-val"
-                      style={{ color: "#C9A84C" }}
-                    >
+                    <div className="summary-score-val" style={{ color: "#C9A84C" }}>
                       {fmt(diagnoseResult.scores.riqueza_total)}
                     </div>
                   </div>
                 </div>
 
                 <div className="summary-footer">
-                  <div className="summary-footer-text">
-                    Análise por IA · @pedrosuperti
-                  </div>
+                  <div className="summary-footer-text">Análise por IA · @pedrosuperti</div>
                   <div className="summary-footer-brand">PEDROSUPERTI.COM.BR</div>
                 </div>
               </div>

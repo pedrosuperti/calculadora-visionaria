@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 
 interface LeadInput {
   nome: string;
@@ -92,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     const result = calcQualification(data);
 
-    // Save lead to file
+    // Log lead (Vercel has read-only filesystem, so just log)
     const lead = {
       ...data,
       ...result,
@@ -100,18 +98,6 @@ export async function POST(request: NextRequest) {
     };
 
     console.log("New lead:", JSON.stringify(lead, null, 2));
-
-    // Append to leads.json
-    const leadsPath = path.join(process.cwd(), "leads.json");
-    let leads: unknown[] = [];
-    try {
-      const existing = await fs.readFile(leadsPath, "utf-8");
-      leads = JSON.parse(existing);
-    } catch {
-      // File doesn't exist yet
-    }
-    leads.push(lead);
-    await fs.writeFile(leadsPath, JSON.stringify(leads, null, 2));
 
     return NextResponse.json(result);
   } catch (error) {

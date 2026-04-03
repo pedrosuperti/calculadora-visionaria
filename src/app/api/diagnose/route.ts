@@ -26,17 +26,18 @@ DADOS DO EMPREENDEDOR:
 REGRAS OBRIGATÓRIAS:
 1. Gere exatamente 3 ideias. Pelo menos 2 devem usar IA de forma central.
 2. Cada ideia deve ser ESPECÍFICA para esse mercado — não genérica. Use o nome do setor, do público, do problema real.
-3. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança.
-4. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
-5. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
-6. Os scores devem refletir análise real:
+3. As ideias devem ser INOVADORAS e SURPREENDENTES. PROIBIDO sugerir: franquias, expansão de unidades, rede de licenciamento, ou qualquer ideia óbvia que o empreendedor já pensou. As ideias devem fazer a pessoa pensar "eu nunca tinha pensado nisso!". Busque modelos de negócio não-convencionais, combinações inusitadas de mercados, ou aplicações de IA que não existem ainda nesse setor.
+4. Os valores de potencial_anual devem ser realistas para o mercado brasileiro. Não exagere — números críveis geram mais confiança.
+5. O plano de 90 dias deve usar linguagem ACESSÍVEL. Proibido usar: "MVP", "escalar", "pipeline", "funil", "stakeholder", "benchmark". Fale como se estivesse explicando para um amigo empreendedor.
+6. O plano deve dar O QUE fazer mas NÃO COMO fazer em detalhe — a pessoa precisa sentir que sabe o caminho mas precisa de ajuda para executar.
+7. Os scores devem refletir análise real:
    - score_atual (25-45): baseado nas dores selecionadas e na distância entre a situação atual e o potencial
    - score_visionario (65-90): baseado no potencial combinado das 3 ideias + oportunidades com IA
-7. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
-8. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
-9. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias
-10. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
-11. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
+8. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
+9. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
+10. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias
+11. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
+12. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
 
 Responda SOMENTE com JSON válido, sem markdown, sem comentários.
 
@@ -51,7 +52,10 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
       "dificuldade": "Facil",
       "cuidados": "1 frase honesta sobre o principal risco ou cuidado",
       "usa_ia": true,
-      "como_usa_ia": "1-2 frases explicando como IA é usada nessa ideia"
+      "como_usa_ia": "1-2 frases explicando como IA é usada nessa ideia",
+      "projecao_6m": 150000,
+      "projecao_12m": 350000,
+      "projecao_24m": 500000
     },
     {
       "nome": "segunda ideia",
@@ -62,7 +66,10 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
       "dificuldade": "Medio",
       "cuidados": "cuidado principal",
       "usa_ia": true,
-      "como_usa_ia": "como usa IA"
+      "como_usa_ia": "como usa IA",
+      "projecao_6m": 200000,
+      "projecao_12m": 550000,
+      "projecao_24m": 800000
     },
     {
       "nome": "terceira ideia",
@@ -73,7 +80,10 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
       "dificuldade": "Facil",
       "cuidados": "cuidado principal",
       "usa_ia": false,
-      "como_usa_ia": ""
+      "como_usa_ia": "",
+      "projecao_6m": 80000,
+      "projecao_12m": 200000,
+      "projecao_24m": 300000
     }
   ],
   "plano": {
