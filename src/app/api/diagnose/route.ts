@@ -41,8 +41,12 @@ REGRAS OBRIGATÓRIAS:
    - score_atual (20-50): baseado nas dores selecionadas, faturamento implícito e distância até o potencial. Mais dores = score mais baixo.
    - score_visionario (60-92): baseado no potencial combinado das 3 ideias + oportunidades com IA. Varia conforme o mercado.
    - IMPORTANTE: NÃO use sempre os mesmos valores. Cada análise deve ter scores únicos baseados nos dados reais fornecidos.
-9. bloqueios: 3 frases curtas sobre o que está travando essa pessoa HOJE (baseado nas dores)
-10. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$)
+9. bloqueios: 3 frases curtas e ÚNICAS sobre o que está travando essa pessoa HOJE.
+   - OBRIGATÓRIO: cada bloqueio deve ser DIRETAMENTE derivado das dores específicas que a pessoa selecionou: "${data.dores.join('", "')}"
+   - Use as PALAVRAS e o CONTEXTO das dores dela — NÃO repita frases genéricas como "agenda lotada", "clientes pagam por você" ou "faturamento travado".
+   - Cada mercado e cada combinação de dores deve gerar bloqueios COMPLETAMENTE DIFERENTES.
+   - Mencione o setor específico (${data.mercadoConfirmado.setor_formatado}) nos bloqueios quando possível.
+10. potenciais: 3 frases curtas sobre o que essa pessoa pode alcançar SE aplicar as ideias (com valores em R$). Devem ser ESPECÍFICOS ao mercado dela, não genéricos.
 11. riqueza_total DEVE ser a soma exata dos potencial_anual das 3 ideias. Os valores devem VARIAR conforme o mercado — nem todo mercado tem o mesmo potencial.
 12. Linguagem: direta, provocativa, sem jargão corporativo. Fale como mentor, não como consultor.
 13. janela_ia: explique por que agora é o momento certo para IA nesse mercado específico
@@ -109,15 +113,15 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
   "scores": {
     "score_atual": 35,
     "bloqueios": [
-      "bloqueio 1 baseado nas dores",
-      "bloqueio 2",
-      "bloqueio 3"
+      "[FRASE ÚNICA derivada da dor #1 que a pessoa selecionou, mencionando o setor dela]",
+      "[FRASE ÚNICA derivada da dor #2 — diferente das anteriores, específica ao mercado]",
+      "[FRASE ÚNICA derivada da dor #3 — contexto real do negócio dessa pessoa]"
     ],
     "score_visionario": 78,
     "potenciais": [
-      "potencial 1 com valor em R$",
-      "potencial 2 com valor em R$",
-      "potencial 3 com valor em R$"
+      "[potencial específico da ideia #1 com valor em R$ — mencione o mercado]",
+      "[potencial específico da ideia #2 com valor em R$ — diferente do anterior]",
+      "[potencial específico da ideia #3 com valor em R$ — conectado ao setor]"
     ],
     "riqueza_total": 1600000
   },
