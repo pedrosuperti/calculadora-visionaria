@@ -75,6 +75,12 @@ function tierOrder(tier: string): number {
   return 2;
 }
 
+// ─── INFO TOOLTIP COMPONENT ─────────────────────────────────────────────
+
+function InfoTip({ text }: { text: string }) {
+  return <span className="adm-info-tip" title={text}>i</span>;
+}
+
 // ─── ADMIN PASSWORD ─────────────────────────────────────────────────────────
 
 const ADMIN_PASS = "visor2026";
@@ -402,14 +408,14 @@ export default function AdminDashboard() {
 
         {/* KPI Row - always visible */}
         <div className="adm-kpis">
-          <div className="adm-kpi"><div className="adm-kpi-num">{stats.total}</div><div className="adm-kpi-label">Total Leads</div></div>
-          <div className="adm-kpi hot"><div className="adm-kpi-num">{stats.hot}</div><div className="adm-kpi-label">Hot</div></div>
-          <div className="adm-kpi warm"><div className="adm-kpi-num">{stats.warm}</div><div className="adm-kpi-label">Warm</div></div>
-          <div className="adm-kpi cold"><div className="adm-kpi-num">{stats.cold}</div><div className="adm-kpi-label">Cold</div></div>
-          <div className="adm-kpi accent"><div className="adm-kpi-num">{stats.applied}</div><div className="adm-kpi-label">Aplicaram</div></div>
-          <div className="adm-kpi accent2"><div className="adm-kpi-num">{stats.scheduled}</div><div className="adm-kpi-label">Agendaram</div></div>
-          <div className="adm-kpi"><div className="adm-kpi-num">{stats.avgScore}</div><div className="adm-kpi-label">Score Médio</div></div>
-          <div className="adm-kpi"><div className="adm-kpi-num">{stats.convRate}%</div><div className="adm-kpi-label">Conv. Rate</div></div>
+          <div className="adm-kpi"><div className="adm-kpi-num">{stats.total}</div><div className="adm-kpi-label">Total Leads <InfoTip text="Quantidade total de leads que passaram pela Calculadora V.I.S.O.R." /></div></div>
+          <div className="adm-kpi hot"><div className="adm-kpi-num">{stats.hot}</div><div className="adm-kpi-label">Hot <InfoTip text="Score 70+. Alta urgência, faturamento alto, prontos pra investir. Prioridade máxima de contato." /></div></div>
+          <div className="adm-kpi warm"><div className="adm-kpi-num">{stats.warm}</div><div className="adm-kpi-label">Warm <InfoTip text="Score 40-69. Potencial real mas precisam de mais contexto ou nutrição antes de converter." /></div></div>
+          <div className="adm-kpi cold"><div className="adm-kpi-num">{stats.cold}</div><div className="adm-kpi-label">Cold <InfoTip text="Score abaixo de 40. Explorando, sem urgência. Recebem plano PDF e podem voltar no futuro." /></div></div>
+          <div className="adm-kpi accent"><div className="adm-kpi-num">{stats.applied}</div><div className="adm-kpi-label">Aplicaram <InfoTip text="Preencheram o formulário de aplicação no Forms.app após a calculadora." /></div></div>
+          <div className="adm-kpi accent2"><div className="adm-kpi-num">{stats.scheduled}</div><div className="adm-kpi-label">Agendaram <InfoTip text="Marcaram sessão estratégica. Status atualizado manualmente pela equipe." /></div></div>
+          <div className="adm-kpi"><div className="adm-kpi-num">{stats.avgScore}</div><div className="adm-kpi-label">Score Médio <InfoTip text="Média de pontuação de todos os leads. Calculado com base em faturamento, urgência, investimento, equipe e dores." /></div></div>
+          <div className="adm-kpi"><div className="adm-kpi-num">{stats.convRate}%</div><div className="adm-kpi-label">Conv. Rate <InfoTip text="Porcentagem de leads que completaram a aplicação no Forms.app (aplicaram / total)." /></div></div>
         </div>
 
         {/* Alert */}
@@ -418,6 +424,7 @@ export default function AdminDashboard() {
             <span className="adm-alert-icon">!</span>
             <span>{hotAlerts.length} lead{hotAlerts.length > 1 ? "s" : ""} HOT sem contato há mais de 1h:</span>
             <span className="adm-alert-names">{hotAlerts.slice(0, 3).map((l) => l.nome || "Sem nome").join(", ")}{hotAlerts.length > 3 && ` +${hotAlerts.length - 3}`}</span>
+            <button className="adm-alert-btn" onClick={() => { setFilter("hot"); setPage("leads"); }}>Ver esses leads</button>
           </div>
         )}
 
