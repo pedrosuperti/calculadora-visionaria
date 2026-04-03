@@ -122,6 +122,7 @@ function ScoreCircle({
   const r = (size - 12) / 2;
   const circumference = 2 * Math.PI * r;
   const offset = circumference - (score / 100) * circumference;
+  const colorVar = variant === "atual" ? "var(--orange)" : "var(--green)";
   return (
     <div className="score-circle-wrap" style={{ width: size, height: size }}>
       <svg className="score-circle-svg" width={size} height={size}>
@@ -131,9 +132,10 @@ function ScoreCircle({
           cx={size / 2} cy={size / 2} r={r}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
+          style={{ stroke: colorVar }}
         />
       </svg>
-      <div className="score-circle-num">{score}</div>
+      <div className="score-circle-num" style={{ color: colorVar }}>{score}</div>
     </div>
   );
 }
@@ -288,31 +290,30 @@ export default function Calculator() {
   };
 
   // ── STEP 4: Drilling + Diagnose API ──
-  // Progress: steps 0-2 advance every 3s (0→25→50→75). Step 3 (100%) only when API done.
   const [drillProgress, setDrillProgress] = useState(0);
+  const drillProgressRef = useRef(0);
+  const smoothIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startDrilling = useCallback(async () => {
     setDrillingStep(0);
     setDrillingDone(false);
     setCounterVal(0);
     setDrillProgress(0);
+    drillProgressRef.current = 0;
     apiDoneRef.current = false;
 
-    // Advance steps 0→1→2 slowly (3s each), hold at step 2 until API returns
-    let i = 0;
-    intervalRef.current = setInterval(() => {
-      i++;
-      if (i <= 2) {
-        setDrillingStep(i);
-        setDrillProgress(i * 25); // 25%, 50%
-      } else if (i === 3 && !apiDoneRef.current) {
-        // Hold at 75% while waiting for API
-        setDrillProgress(75);
-      }
-      if (i >= 3 && intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }, 3000);
+    // Smooth progress: creeps up to ~85% while waiting for API
+    // Steps advance at specific thresholds
+    smoothIntervalRef.current = setInterval(() => {
+      if (apiDoneRef.current) return; // stop smooth when API done
+      drillProgressRef.current = Math.min(drillProgressRef.current + 0.4, 85);
+      const p = drillProgressRef.current;
+      setDrillProgress(p);
+      // Advance drill steps at thresholds
+      if (p >= 20 && p < 21) setDrillingStep(1);
+      if (p >= 45 && p < 46) setDrillingStep(2);
+      if (p >= 70 && p < 71) setDrillingStep(3);
+    }, 100);
 
     try {
       const res = await fetch("/api/diagnose", {
@@ -331,9 +332,21 @@ export default function Calculator() {
       setDiagnoseResult(result);
       apiDoneRef.current = true;
 
-      // Now complete the remaining steps quickly
-      setDrillingStep(3);
-      setDrillProgress(100);
+      // Stop smooth animation
+      if (smoothIntervalRef.current) clearInterval(smoothIntervalRef.current);
+
+      // Complete all steps and animate to 100%
+      setDrillingStep(DRILL_STEPS.length);
+      const fillStart = drillProgressRef.current;
+      const fillDuration = 1500;
+      const fillStartTime = Date.now();
+      const fillInterval = setInterval(() => {
+        const elapsed = Date.now() - fillStartTime;
+        const t = Math.min(elapsed / fillDuration, 1);
+        const val = fillStart + (100 - fillStart) * t;
+        setDrillProgress(val);
+        if (t >= 1) clearInterval(fillInterval);
+      }, 30);
 
       // Animate counter
       const target = result.scores.riqueza_total;
@@ -347,6 +360,7 @@ export default function Calculator() {
         if (progress >= 1) clearInterval(counterInterval);
       }, 30);
     } catch {
+      if (smoothIntervalRef.current) clearInterval(smoothIntervalRef.current);
       if (intervalRef.current) clearInterval(intervalRef.current);
       setError("Erro ao gerar diagnóstico. Tente novamente.");
       goTo(3);
@@ -354,8 +368,8 @@ export default function Calculator() {
   }, [data, goTo]);
 
   useEffect(() => {
-    if (step === 4 && drillProgress >= 100 && apiDoneRef.current && diagnoseResult) {
-      const timer = setTimeout(() => setDrillingDone(true), 2000);
+    if (step === 4 && drillProgress >= 99 && apiDoneRef.current && diagnoseResult) {
+      const timer = setTimeout(() => setDrillingDone(true), 1500);
       return () => clearTimeout(timer);
     }
   }, [step, drillProgress, diagnoseResult]);
@@ -366,6 +380,7 @@ export default function Calculator() {
     }
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (smoothIntervalRef.current) clearInterval(smoothIntervalRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step === 4]);
@@ -404,10 +419,13 @@ export default function Calculator() {
     }
   };
 
+  const [bioLoading, setBioLoading] = useState(false);
+
   // ── BIO IMAGE HANDLER (with compression) ──
   const handleBioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setBioLoading(true);
 
     // Compress image to max 800px wide, JPEG quality 0.7
     const img = new Image();
@@ -432,6 +450,7 @@ export default function Calculator() {
         ctx.drawImage(img, 0, 0, w, h);
         const compressed = canvas.toDataURL("image/jpeg", 0.7);
         set("bioImagem", compressed);
+        setBioLoading(false);
       };
       img.src = reader.result as string;
     };
@@ -571,7 +590,12 @@ export default function Calculator() {
                   Anexar print da bio do Instagram (opcional)
                 </button>
                 <div className="bio-hint">A IA lê sua bio para entender melhor seu negócio</div>
-                {data.bioImagem && (
+                {bioLoading && (
+                  <div className="bio-loading">
+                    <span className="loading-inline" /> Processando imagem...
+                  </div>
+                )}
+                {data.bioImagem && !bioLoading && (
                   <div className="bio-upload-preview">
                     <img src={data.bioImagem} alt="Bio preview" />
                     <button
@@ -1018,6 +1042,10 @@ export default function Calculator() {
                 ⏰ Esse plano exige cerca de {diagnoseResult.plano.horas_semana} horas por semana de dedicação.
               </div>
 
+              <div className="plano-emotional">
+                {data.nome}, esse plano foi criado especificamente para o seu mercado. Cada etapa foi pensada para te levar do ponto A ao ponto B da forma mais direta possível. A pergunta agora não é <em>se</em> você consegue — é <em>quando</em> você vai começar.
+              </div>
+
               <button className="btn-drill" onClick={() => goTo(8)}>
                 QUAL MEU PRÓXIMO PASSO?
               </button>
@@ -1084,26 +1112,25 @@ export default function Calculator() {
             <div className="elegivel-section step-content">
               <BackButton onClick={goBack} />
 
-              <div className="step-title">Como acessar essa riqueza?</div>
-              <div className="final-intro">
-                Analisando seu caso, estas são as oportunidades que identificamos que sua concorrência ainda não está explorando no seu mercado:
+              <div className="step-title">Posso ajudar você?</div>
+              <div className="elegivel-minority">
+                Se você está vendo esta mensagem, você faz parte de uma minoria que meu sistema identificou como um negócio com potencial visionário real.
               </div>
 
-              {/* 3 ideas summary */}
-              <div className="final-ideas">
-                {diagnoseResult.ideias.map((idea, i) => (
-                  <div className="final-idea" key={i}>
-                    <div className="final-idea-num">#{i + 1}</div>
-                    <div className="final-idea-body">
-                      <div className="final-idea-name">{idea.nome}</div>
-                      <div className="final-idea-val">{fmt(idea.potencial_anual)}/ano</div>
-                    </div>
-                    {idea.usa_ia && <div className="final-idea-tag">IA</div>}
-                  </div>
-                ))}
+              <div className="elegivel-badge">
+                <div className="elegivel-badge-icon">&#10003;</div>
+                <div className="elegivel-badge-text">STATUS: ELEGÍVEL</div>
               </div>
 
-              {/* Scores row: atual small, visionário big, riqueza below */}
+              <div className="elegivel-desc">
+                Seu negócio está elegível para uma sessão estratégica de 40 minutos onde eu pessoalmente vou te mostrar como desbloquear a riqueza que a IA identificou no seu mercado.
+              </div>
+
+              <div className="elegivel-price">
+                Essa sessão custa <strong>R$1 mil</strong>. Mas pelo seu perfil, você está elegível para receber uma <strong>sem custo nenhum</strong>.
+              </div>
+
+              {/* Quick recap: scores + riqueza */}
               <div className="final-scores">
                 <div className="final-score-atual">
                   <div className="final-score-label">Score Atual</div>
@@ -1117,75 +1144,24 @@ export default function Calculator() {
               </div>
 
               <div className="final-riqueza">
-                <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR NOS PRÓXIMOS 12 MESES</div>
+                <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
                 <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
               </div>
 
-              {diagnoseResult.insight && (
-                <div className="insight">&ldquo;{diagnoseResult.insight}&rdquo;</div>
-              )}
-
-              {/* CTA - same for all */}
-              <div className="final-cta-section">
-                <div className="final-cta-text">
-                  Quer um plano personalizado para desbloquear essa riqueza com a ajuda de um especialista?
-                </div>
-                <a
-                  href={CONSULTORIA_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ textDecoration: "none", display: "block" }}
-                >
-                  <button className="btn-gold">
-                    QUERO MINHA CONSULTORIA DE DESBLOQUEIO
-                  </button>
-                </a>
-              </div>
-
-              {/* Screenshot card */}
-              <div className="summary-card">
-                <div className="summary-header">
-                  <div>
-                    <div className="summary-name">{data.nome}</div>
-                    <div className="summary-sector">{data.mercadoConfirmado?.setor_formatado}</div>
-                  </div>
-                  <div className="summary-brand">Calculadora de Riqueza</div>
-                </div>
-                <div className="summary-ideas">
-                  {diagnoseResult.ideias.map((idea, i) => (
-                    <div className="summary-idea" key={i}>
-                      <span className="summary-idea-name">#{i + 1} {idea.nome}</span>
-                      <span className="summary-idea-val">{fmt(idea.potencial_anual)}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="summary-scores">
-                  <div className="summary-score-item">
-                    <div className="summary-score-label">ATUAL</div>
-                    <div className="summary-score-val" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
-                  </div>
-                  <div className="summary-score-item">
-                    <div className="summary-score-label">VISIONÁRIO</div>
-                    <div className="summary-score-val" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
-                  </div>
-                  <div className="summary-score-item">
-                    <div className="summary-score-label">RIQUEZA</div>
-                    <div className="summary-score-val" style={{color: "#C9A84C"}}>{fmt(diagnoseResult.scores.riqueza_total)}</div>
-                  </div>
-                </div>
-                <div className="summary-footer">
-                  <div className="summary-footer-text">Análise por IA · @pedrosuperti</div>
-                  <div className="summary-footer-brand">PEDROSUPERTI.COM.BR</div>
-                </div>
-              </div>
-
-              <button
-                className="btn-sec"
-                style={{ width: "100%", marginTop: 10 }}
-                onClick={() => window.print()}
+              <a
+                href={CONSULTORIA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ textDecoration: "none", display: "block", width: "100%" }}
               >
-                Salvar minha análise
-              </button>
+                <button className="btn-gold">
+                  QUERO MINHA SESSÃO ESTRATÉGICA GRATUITA
+                </button>
+              </a>
+
+              <div className="elegivel-vagas">
+                Vagas limitadas. Apenas {leadResult?.topPercent || 8}% dos perfis analisados recebem essa oferta.
+              </div>
             </div>
           )}
         </div>
