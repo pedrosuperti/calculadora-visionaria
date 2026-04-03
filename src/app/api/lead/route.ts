@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
 
     // Save to Supabase
     const supabase = getSupabase();
-    const { error: dbError } = supabase ? await supabase.from("leads").insert({
+    const { error: dbError } = supabase ? await supabase.from("leads-calculadora-visionaria").insert({
       nome: data.nome,
       mercado: data.mercado,
       whatsapp: data.whatsapp,
