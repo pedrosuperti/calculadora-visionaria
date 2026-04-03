@@ -194,6 +194,7 @@ export default function AdminDashboard() {
   const [sort, setSort] = useState<SortKey>("date");
   const [search, setSearch] = useState("");
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [modalTab, setModalTab] = useState<"perfil" | "aplicacao">("perfil");
   const [insights, setInsights] = useState<Record<string, unknown> | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
 
@@ -827,7 +828,7 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="adm-mini-list">
                     {needsAttention.map((l) => (
-                      <div key={l.id} className="adm-mini-card" onClick={() => setSelectedLead(l)}>
+                      <div key={l.id} className="adm-mini-card" onClick={() => { setSelectedLead(l); setModalTab("perfil"); setInsights(null); }}>
                         <div className="adm-mini-card-score" style={{ borderColor: TIER_COLORS[(l.tier || "cold") as keyof typeof TIER_COLORS] }}>{l.internal_score || 0}</div>
                         <div className="adm-mini-card-info">
                           <span className="adm-mini-card-name">{l.nome || "Sem nome"}</span>
@@ -845,7 +846,7 @@ export default function AdminDashboard() {
             <div className="adm-section-title">LEADS RECENTES</div>
             <div className="adm-list">
               {recentLeads.map((lead) => (
-                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => setSelectedLead(lead)}>
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setSelectedLead(lead); setModalTab("perfil"); setInsights(null); }}>
                   <div className="adm-card-left">
                     <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
                   </div>
@@ -1221,7 +1222,7 @@ export default function AdminDashboard() {
             <div className="adm-list">
               {filtered.length === 0 && <div className="adm-empty">{loading ? "Carregando..." : "Nenhum lead encontrado."}</div>}
               {filtered.map((lead) => (
-                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => setSelectedLead(lead)}>
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setSelectedLead(lead); setModalTab("perfil"); setInsights(null); }}>
                   <div className="adm-card-left">
                     <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
                   </div>
@@ -1279,200 +1280,233 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Lead timeline */}
-            <div className="adm-timeline">
-              <div className="adm-timeline-item done">
-                <div className="adm-timeline-dot" />
-                <div className="adm-timeline-text">
-                  <strong>Calculadora V.I.S.O.R.</strong>
-                  <span>{selectedLead.created_at ? new Date(selectedLead.created_at).toLocaleString("pt-BR") : "—"}</span>
-                </div>
-              </div>
-              <div className={`adm-timeline-item${selectedLead.contact_status && selectedLead.contact_status !== "novo" ? " done" : ""}`}>
-                <div className="adm-timeline-dot" />
-                <div className="adm-timeline-text">
-                  <strong>Contato realizado</strong>
-                  <span>{selectedLead.contact_status && selectedLead.contact_status !== "novo" ? CONTACT_LABELS[selectedLead.contact_status] : "Pendente"}</span>
-                </div>
-              </div>
-              <div className={`adm-timeline-item${selectedLead.formsapp_completed ? " done" : ""}`}>
-                <div className="adm-timeline-dot" />
-                <div className="adm-timeline-text">
-                  <strong>Aplicação Forms.app</strong>
-                  <span>{selectedLead.formsapp_completed ? (selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : "Sim") : "Pendente"}</span>
-                </div>
-              </div>
-              <div className={`adm-timeline-item${selectedLead.contact_status === "agendou" ? " done" : ""}`}>
-                <div className="adm-timeline-dot" />
-                <div className="adm-timeline-text">
-                  <strong>Sessão agendada</strong>
-                  <span>{selectedLead.contact_status === "agendou" ? "Confirmado" : "Pendente"}</span>
-                </div>
-              </div>
+            {/* Tabs */}
+            <div className="adm-modal-tabs">
+              <button className={`adm-modal-tab${modalTab === "perfil" ? " active" : ""}`} onClick={() => setModalTab("perfil")}>
+                📊 Perfil
+              </button>
+              <button
+                className={`adm-modal-tab${modalTab === "aplicacao" ? " active" : ""}${selectedLead.formsapp_completed ? " has-data" : ""}`}
+                onClick={() => setModalTab("aplicacao")}
+              >
+                📋 Aplicação {selectedLead.formsapp_completed && <span className="adm-tab-badge">!</span>}
+              </button>
             </div>
 
-            {/* Forms.app responses */}
-            {selectedLead.formsapp_completed && selectedLead.formsapp_data && (() => {
-              const qa = parseFormsAppData(selectedLead.formsapp_data);
-              return qa.length > 0 ? (
-                <div className="adm-forms-section">
-                  <div className="adm-forms-header">
-                    <span className="adm-forms-icon">📋</span>
-                    <strong>Respostas da Aplicação</strong>
-                    <span className="adm-forms-date">{selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : ""}</span>
+            {/* ─── TAB: PERFIL ─── */}
+            {modalTab === "perfil" && (
+              <>
+                {/* Lead timeline */}
+                <div className="adm-timeline">
+                  <div className="adm-timeline-item done">
+                    <div className="adm-timeline-dot" />
+                    <div className="adm-timeline-text">
+                      <strong>Calculadora V.I.S.O.R.</strong>
+                      <span>{selectedLead.created_at ? new Date(selectedLead.created_at).toLocaleString("pt-BR") : "—"}</span>
+                    </div>
                   </div>
-                  <div className="adm-forms-list">
-                    {qa.map((item, i) => (
-                      <div key={i} className="adm-forms-item">
-                        <div className="adm-forms-q">{item.question}</div>
-                        <div className="adm-forms-a">{item.answer}</div>
-                      </div>
+                  <div className={`adm-timeline-item${selectedLead.contact_status && selectedLead.contact_status !== "novo" ? " done" : ""}`}>
+                    <div className="adm-timeline-dot" />
+                    <div className="adm-timeline-text">
+                      <strong>Contato realizado</strong>
+                      <span>{selectedLead.contact_status && selectedLead.contact_status !== "novo" ? CONTACT_LABELS[selectedLead.contact_status] : "Pendente"}</span>
+                    </div>
+                  </div>
+                  <div className={`adm-timeline-item${selectedLead.formsapp_completed ? " done" : ""}`}>
+                    <div className="adm-timeline-dot" />
+                    <div className="adm-timeline-text">
+                      <strong>Aplicação Forms.app</strong>
+                      <span>{selectedLead.formsapp_completed ? (selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : "Sim") : "Pendente"}</span>
+                    </div>
+                  </div>
+                  <div className={`adm-timeline-item${selectedLead.contact_status === "agendou" ? " done" : ""}`}>
+                    <div className="adm-timeline-dot" />
+                    <div className="adm-timeline-text">
+                      <strong>Sessão agendada</strong>
+                      <span>{selectedLead.contact_status === "agendou" ? "Confirmado" : "Pendente"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Details grid */}
+                <div className="adm-modal-grid">
+                  <div className="adm-modal-field">
+                    <label>WhatsApp</label>
+                    <a href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
+                      {selectedLead.whatsapp}
+                    </a>
+                  </div>
+                  <div className="adm-modal-field">
+                    <label>Mercado</label>
+                    <span>{selectedLead.mercado || "—"}</span>
+                  </div>
+                  <div className="adm-modal-field">
+                    <label>Faturamento</label>
+                    <span>{selectedLead.faturamento || "—"}</span>
+                  </div>
+                  <div className="adm-modal-field">
+                    <label>Equipe</label>
+                    <span>{selectedLead.equipe || "—"}</span>
+                  </div>
+                  <div className="adm-modal-field">
+                    <label>Urgência</label>
+                    <span>{selectedLead.urgencia || "—"}</span>
+                  </div>
+                  <div className="adm-modal-field">
+                    <label>Investimento</label>
+                    <span>{selectedLead.investimento || "—"}</span>
+                  </div>
+                  <div className="adm-modal-field full">
+                    <label>Dores</label>
+                    <span>{selectedLead.dores?.join(", ") || "—"}</span>
+                  </div>
+                </div>
+
+                {/* Status de contato */}
+                <div className="adm-modal-section">
+                  <label>Status de Contato</label>
+                  <div className="adm-status-btns">
+                    {(["novo", "contactado", "agendou", "sem_resposta", "descartado"] as ContactStatus[]).map((s) => (
+                      <button
+                        key={s}
+                        className={`adm-status-btn${(selectedLead.contact_status || "novo") === s ? " active" : ""}`}
+                        style={{ borderColor: CONTACT_COLORS[s], color: (selectedLead.contact_status || "novo") === s ? "#fff" : CONTACT_COLORS[s], background: (selectedLead.contact_status || "novo") === s ? CONTACT_COLORS[s] + "33" : "transparent" }}
+                        onClick={() => updateLead(selectedLead.id, { contact_status: s })}
+                      >
+                        {CONTACT_LABELS[s]}
+                      </button>
                     ))}
                   </div>
                 </div>
-              ) : null;
-            })()}
 
-            {/* Details grid */}
-            <div className="adm-modal-grid">
-              <div className="adm-modal-field">
-                <label>WhatsApp</label>
-                <a href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">
-                  {selectedLead.whatsapp}
-                </a>
-              </div>
-              <div className="adm-modal-field">
-                <label>Mercado</label>
-                <span>{selectedLead.mercado || "—"}</span>
-              </div>
-              <div className="adm-modal-field">
-                <label>Faturamento</label>
-                <span>{selectedLead.faturamento || "—"}</span>
-              </div>
-              <div className="adm-modal-field">
-                <label>Equipe</label>
-                <span>{selectedLead.equipe || "—"}</span>
-              </div>
-              <div className="adm-modal-field">
-                <label>Urgência</label>
-                <span>{selectedLead.urgencia || "—"}</span>
-              </div>
-              <div className="adm-modal-field">
-                <label>Investimento</label>
-                <span>{selectedLead.investimento || "—"}</span>
-              </div>
-              <div className="adm-modal-field full">
-                <label>Dores</label>
-                <span>{selectedLead.dores?.join(", ") || "—"}</span>
-              </div>
-            </div>
-
-            {/* Status de contato */}
-            <div className="adm-modal-section">
-              <label>Status de Contato</label>
-              <div className="adm-status-btns">
-                {(["novo", "contactado", "agendou", "sem_resposta", "descartado"] as ContactStatus[]).map((s) => (
-                  <button
-                    key={s}
-                    className={`adm-status-btn${(selectedLead.contact_status || "novo") === s ? " active" : ""}`}
-                    style={{ borderColor: CONTACT_COLORS[s], color: (selectedLead.contact_status || "novo") === s ? "#fff" : CONTACT_COLORS[s], background: (selectedLead.contact_status || "novo") === s ? CONTACT_COLORS[s] + "33" : "transparent" }}
-                    onClick={() => updateLead(selectedLead.id, { contact_status: s })}
-                  >
-                    {CONTACT_LABELS[s]}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Notas */}
-            <div className="adm-modal-section">
-              <label>Notas da equipe</label>
-              <textarea
-                className="adm-notes"
-                rows={3}
-                placeholder="Ex: Vai agendar semana que vem..."
-                value={selectedLead.notes || ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedLead((prev) => prev ? { ...prev, notes: val } : prev);
-                  setLeads((prev) => prev.map((l) => l.id === selectedLead.id ? { ...l, notes: val } : l));
-                }}
-                onBlur={() => updateLead(selectedLead.id, { notes: selectedLead.notes || "" })}
-              />
-            </div>
-
-            {/* AI Insights */}
-            <div className="adm-insights-section">
-              {!insights && !insightsLoading && (
-                <button className="adm-btn-insights" onClick={() => fetchInsights(selectedLead)}>
-                  🧠 Gerar Insights com IA
-                </button>
-              )}
-              {insightsLoading && (
-                <div className="adm-insights-loading">
-                  <div className="adm-insights-spinner" />
-                  <span>Analisando perfil com IA...</span>
+                {/* Notas */}
+                <div className="adm-modal-section">
+                  <label>Notas da equipe</label>
+                  <textarea
+                    className="adm-notes"
+                    rows={3}
+                    placeholder="Ex: Vai agendar semana que vem..."
+                    value={selectedLead.notes || ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedLead((prev) => prev ? { ...prev, notes: val } : prev);
+                      setLeads((prev) => prev.map((l) => l.id === selectedLead.id ? { ...l, notes: val } : l));
+                    }}
+                    onBlur={() => updateLead(selectedLead.id, { notes: selectedLead.notes || "" })}
+                  />
                 </div>
-              )}
-              {insights && (
-                <div className="adm-insights-content">
-                  <div className="adm-insights-header">
-                    <span>🧠</span>
-                    <strong>Insights IA</strong>
-                    <span className={`adm-insights-prob ${String(insights.probabilidade_fechamento || "").toLowerCase()}`}>
-                      {String(insights.probabilidade_fechamento || "")} chance
-                    </span>
-                    <span className="adm-insights-prod">{String(insights.produto_ideal || "")}</span>
+              </>
+            )}
+
+            {/* ─── TAB: APLICAÇÃO ─── */}
+            {modalTab === "aplicacao" && (
+              <>
+                {!selectedLead.formsapp_completed ? (
+                  <div className="adm-forms-empty">
+                    <span className="adm-forms-empty-icon">📋</span>
+                    <p>Este lead ainda não preencheu o formulário de aplicação.</p>
+                    <p className="adm-forms-empty-hint">Quando preencher, as respostas e insights aparecerão aqui automaticamente.</p>
                   </div>
+                ) : (
+                  <>
+                    {/* Forms.app responses */}
+                    {selectedLead.formsapp_data && (() => {
+                      const qa = parseFormsAppData(selectedLead.formsapp_data);
+                      return qa.length > 0 ? (
+                        <div className="adm-forms-section">
+                          <div className="adm-forms-header">
+                            <span className="adm-forms-icon">📋</span>
+                            <strong>Respostas da Aplicação</strong>
+                            <span className="adm-forms-date">{selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : ""}</span>
+                          </div>
+                          <div className="adm-forms-list">
+                            {qa.map((item, i) => (
+                              <div key={i} className="adm-forms-item">
+                                <div className="adm-forms-q">{item.question}</div>
+                                <div className="adm-forms-a">{item.answer}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
 
-                  <div className="adm-insights-grid">
-                    <div className="adm-insights-card">
-                      <div className="adm-insights-card-label">🔥 Maior Dor</div>
-                      <div className="adm-insights-card-text">{String(insights.maior_dor || "")}</div>
+                    {/* AI Insights */}
+                    <div className="adm-insights-section">
+                      {!insights && !insightsLoading && (
+                        <button className="adm-btn-insights" onClick={() => fetchInsights(selectedLead)}>
+                          🧠 Gerar Insights com IA
+                        </button>
+                      )}
+                      {insightsLoading && (
+                        <div className="adm-insights-loading">
+                          <div className="adm-insights-spinner" />
+                          <span>Analisando perfil com IA...</span>
+                        </div>
+                      )}
+                      {insights && (
+                        <div className="adm-insights-content">
+                          <div className="adm-insights-header">
+                            <span>🧠</span>
+                            <strong>Insights IA</strong>
+                            <span className={`adm-insights-prob ${String(insights.probabilidade_fechamento || "").toLowerCase()}`}>
+                              {String(insights.probabilidade_fechamento || "")} chance
+                            </span>
+                            <span className="adm-insights-prod">{String(insights.produto_ideal || "")}</span>
+                          </div>
+
+                          <div className="adm-insights-grid">
+                            <div className="adm-insights-card">
+                              <div className="adm-insights-card-label">🔥 Maior Dor</div>
+                              <div className="adm-insights-card-text">{String(insights.maior_dor || "")}</div>
+                            </div>
+                            <div className="adm-insights-card">
+                              <div className="adm-insights-card-label">💪 Ponto Forte</div>
+                              <div className="adm-insights-card-text">{String(insights.ponto_forte || "")}</div>
+                            </div>
+                            <div className="adm-insights-card">
+                              <div className="adm-insights-card-label">⚠️ Ponto Fraco</div>
+                              <div className="adm-insights-card-text">{String(insights.ponto_fraco || "")}</div>
+                            </div>
+                            <div className="adm-insights-card full">
+                              <div className="adm-insights-card-label">🎯 Conexão com Ignition</div>
+                              <div className="adm-insights-card-text">{String(insights.conexao_ignition || "")}</div>
+                            </div>
+                          </div>
+
+                          <div className="adm-insights-approaches">
+                            <div className="adm-insights-card-label">💬 Sugestões de Abordagem</div>
+                            {Array.isArray(insights.abordagens) && insights.abordagens.map((a: string, i: number) => (
+                              <div key={i} className="adm-insights-approach">
+                                <span className="adm-insights-approach-num">{i + 1}</span>
+                                <span>{a}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="adm-insights-gancho">
+                            <div className="adm-insights-card-label">🎣 Frase Gancho</div>
+                            <div className="adm-insights-gancho-text">&ldquo;{String(insights.frase_gancho || "")}&rdquo;</div>
+                          </div>
+
+                          {insights.alertas && String(insights.alertas).trim() !== "" ? (
+                            <div className="adm-insights-alert">
+                              <span>🚨</span> {String(insights.alertas)}
+                            </div>
+                          ) : null}
+
+                          <button className="adm-btn-insights regen" onClick={() => fetchInsights(selectedLead)}>
+                            🔄 Regenerar Insights
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="adm-insights-card">
-                      <div className="adm-insights-card-label">💪 Ponto Forte</div>
-                      <div className="adm-insights-card-text">{String(insights.ponto_forte || "")}</div>
-                    </div>
-                    <div className="adm-insights-card">
-                      <div className="adm-insights-card-label">⚠️ Ponto Fraco</div>
-                      <div className="adm-insights-card-text">{String(insights.ponto_fraco || "")}</div>
-                    </div>
-                    <div className="adm-insights-card full">
-                      <div className="adm-insights-card-label">🎯 Conexão com Ignition</div>
-                      <div className="adm-insights-card-text">{String(insights.conexao_ignition || "")}</div>
-                    </div>
-                  </div>
+                  </>
+                )}
+              </>
+            )}
 
-                  <div className="adm-insights-approaches">
-                    <div className="adm-insights-card-label">💬 Sugestões de Abordagem</div>
-                    {Array.isArray(insights.abordagens) && insights.abordagens.map((a: string, i: number) => (
-                      <div key={i} className="adm-insights-approach">
-                        <span className="adm-insights-approach-num">{i + 1}</span>
-                        <span>{a}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="adm-insights-gancho">
-                    <div className="adm-insights-card-label">🎣 Frase Gancho</div>
-                    <div className="adm-insights-gancho-text">&ldquo;{String(insights.frase_gancho || "")}&rdquo;</div>
-                  </div>
-
-                  {insights.alertas && String(insights.alertas).trim() !== "" ? (
-                    <div className="adm-insights-alert">
-                      <span>🚨</span> {String(insights.alertas)}
-                    </div>
-                  ) : null}
-
-                  <button className="adm-btn-insights regen" onClick={() => fetchInsights(selectedLead)}>
-                    🔄 Regenerar Insights
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Actions */}
+            {/* Actions — always visible */}
             <div className="adm-modal-actions">
               <a
                 href={`https://wa.me/${(selectedLead.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(
