@@ -45,7 +45,11 @@ export async function POST() {
       .order("created_at", { ascending: true });
 
     if (unmatchedError) {
-      return NextResponse.json({ error: "Failed to fetch unmatched: " + unmatchedError.message }, { status: 500 });
+      // Table probably doesn't exist yet
+      if (unmatchedError.message.includes("does not exist") || unmatchedError.code === "42P01") {
+        return NextResponse.json({ status: "ok", message: "Tabela formsapp_unmatched ainda nao existe. Importe dados primeiro.", total_unmatched: 0, synced: 0, still_unmatched: 0, results: [] });
+      }
+      return NextResponse.json({ error: "Erro ao buscar pendentes: " + unmatchedError.message }, { status: 500 });
     }
 
     if (!unmatched || unmatched.length === 0) {
