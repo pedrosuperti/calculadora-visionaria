@@ -41,22 +41,30 @@ O tam_estimado deve ser o TAM anual em reais do mercado no Brasil. Use dados rea
 
     if (imagem) {
       // Extract media type and base64 data from data URL
+      // Client compresses to JPEG, but handle other formats too
       const match = imagem.match(
         /^data:(image\/(jpeg|png|gif|webp));base64,(.+)$/
       );
       if (match) {
-        content.push({
-          type: "image",
-          source: {
-            type: "base64",
-            media_type: match[1] as
-              | "image/jpeg"
-              | "image/png"
-              | "image/gif"
-              | "image/webp",
-            data: match[3],
-          },
-        });
+        // Check size - skip image if base64 data > 5MB
+        if (match[3].length > 5 * 1024 * 1024) {
+          console.warn("Image too large, skipping. Size:", match[3].length);
+        } else {
+          content.push({
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: match[1] as
+                | "image/jpeg"
+                | "image/png"
+                | "image/gif"
+                | "image/webp",
+              data: match[3],
+            },
+          });
+        }
+      } else {
+        console.warn("Image format not supported, skipping. Starts with:", imagem.substring(0, 50));
       }
     }
 
@@ -87,6 +95,19 @@ O tam_estimado deve ser o TAM anual em reais do mercado no Brasil. Use dados rea
     return NextResponse.json(result);
   } catch (error) {
     console.error("Confirm error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes("Could not process image") || msg.includes("image")) {
+      return NextResponse.json(
+        { error: "Não conseguimos processar a imagem. Tente sem o print ou use uma imagem menor." },
+        { status: 400 }
+      );
+    }
+    if (msg.includes("authentication") || msg.includes("api_key") || msg.includes("401")) {
+      return NextResponse.json(
+        { error: "Serviço de IA não configurado. Entre em contato com o suporte." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json(
       { error: "Erro ao analisar mercado. Tente novamente." },
       { status: 500 }

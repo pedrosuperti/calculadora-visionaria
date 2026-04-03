@@ -388,12 +388,37 @@ export default function Calculator() {
     }
   };
 
-  // ── BIO IMAGE HANDLER ──
+  // ── BIO IMAGE HANDLER (with compression) ──
   const handleBioUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Compress image to max 800px wide, JPEG quality 0.7
+    const img = new Image();
     const reader = new FileReader();
-    reader.onload = () => set("bioImagem", reader.result as string);
+    reader.onload = () => {
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const maxW = 800;
+        let w = img.width;
+        let h = img.height;
+        if (w > maxW) {
+          h = Math.round((h * maxW) / w);
+          w = maxW;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          set("bioImagem", reader.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL("image/jpeg", 0.7);
+        set("bioImagem", compressed);
+      };
+      img.src = reader.result as string;
+    };
     reader.readAsDataURL(file);
   };
 
