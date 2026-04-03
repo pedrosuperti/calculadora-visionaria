@@ -230,7 +230,15 @@ function detectAndParse(text: string): { submissions: ParsedSubmission[]; format
     } catch { /* not JSON */ }
   }
 
-  // Check for CSV (has header line with commas/tabs/semicolons + consistent columns)
+  // Try Forms.app text format FIRST (has date+ID pattern OR known labels)
+  const hasFormsPattern = /\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M/.test(trimmed);
+  const hasLabels = trimmed.split("\n").some((l) => l.trim().endsWith(":") && isKnownLabel(l.trim()));
+  if (hasFormsPattern || hasLabels) {
+    const parsed = parseFormsAppText(trimmed);
+    if (parsed.length > 0) return { submissions: parsed, format: "Texto Forms.app" };
+  }
+
+  // Then check for CSV (has header line with commas/tabs/semicolons + consistent columns)
   const firstLine = trimmed.split("\n")[0];
   const hasCsvHeader = firstLine.includes(",") || firstLine.includes("\t") || firstLine.includes(";");
   const looksLikeCsv = hasCsvHeader && (
@@ -242,14 +250,6 @@ function detectAndParse(text: string): { submissions: ParsedSubmission[]; format
   if (looksLikeCsv) {
     const parsed = parseCSV(trimmed);
     if (parsed.length > 0) return { submissions: parsed, format: "CSV" };
-  }
-
-  // Try Forms.app text format (has date+ID pattern OR known labels)
-  const hasFormsPattern = /\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M/.test(trimmed);
-  const hasLabels = trimmed.split("\n").some((l) => l.trim().endsWith(":") && isKnownLabel(l.trim()));
-  if (hasFormsPattern || hasLabels) {
-    const parsed = parseFormsAppText(trimmed);
-    if (parsed.length > 0) return { submissions: parsed, format: "Texto Forms.app" };
   }
 
   // Last resort: try CSV anyway
