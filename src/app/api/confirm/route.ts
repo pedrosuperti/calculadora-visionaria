@@ -5,6 +5,14 @@ const anthropic = new Anthropic();
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error("ANTHROPIC_API_KEY not configured");
+      return NextResponse.json(
+        { error: "Serviço de IA não configurado. Entre em contato com o suporte." },
+        { status: 503 }
+      );
+    }
+
     const { mercado, imagem } = await request.json();
 
     if (!mercado?.trim()) {

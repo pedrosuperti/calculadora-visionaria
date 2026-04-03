@@ -59,8 +59,8 @@ const INVESTIMENTO_OPTIONS = [
 
 function fmt(val: number): string {
   if (!val) return "—";
-  if (val >= 1e9) return `R$ ${(val / 1e9).toFixed(1).replace(".", ",")} bi`;
-  if (val >= 1e6) return `R$ ${(val / 1e6).toFixed(1).replace(".", ",")} mi`;
+  if (val >= 1e9) return `R$ ${(val / 1e9).toFixed(1).replace(".", ",")} bilhões`;
+  if (val >= 1e6) return `R$ ${(val / 1e6).toFixed(1).replace(".", ",")} milhões`;
   if (val >= 1e3) return `R$ ${(val / 1e3).toFixed(0)}k`;
   return `R$ ${val.toFixed(0)}`;
 }
@@ -80,7 +80,7 @@ function stepToIndex(step: WizardStep): number {
   return map[String(step)] ?? -1;
 }
 
-const CALENDLY_URL = process.env.NEXT_PUBLIC_CALENDLY_URL || "#";
+const CONSULTORIA_URL = "https://sis39334.forms.app/aplicacao-consultoria-1";
 
 // Map step to previous step for back navigation
 function prevStep(step: WizardStep): WizardStep | null {
@@ -161,6 +161,26 @@ function RevenueChart({ p6, p12, p24 }: { p6: number; p12: number; p24: number }
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── PROGRESS RING (drilling animation) ─────────────────────────────────────
+
+function ProgressRing({ progress }: { progress: number }) {
+  const size = 80;
+  const strokeWidth = 5;
+  const r = (size - strokeWidth * 2) / 2;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (progress / 100) * circumference;
+  return (
+    <div className="progress-ring-wrap">
+      <svg width={size} height={size} className="progress-ring-svg">
+        <circle className="progress-ring-bg" cx={size/2} cy={size/2} r={r} strokeWidth={strokeWidth} />
+        <circle className="progress-ring-fill" cx={size/2} cy={size/2} r={r} strokeWidth={strokeWidth}
+          strokeDasharray={circumference} strokeDashoffset={offset} />
+      </svg>
+      <div className="progress-ring-pct">{Math.round(progress)}%</div>
     </div>
   );
 }
@@ -457,11 +477,14 @@ export default function Calculator() {
 
               <div className="social-proof">
                 <div className="social-avatars">
-                  <div className="avatar" style={{background:"#C9A84C"}}>PS</div>
-                  <div className="avatar" style={{background:"#22C55E"}}>MR</div>
-                  <div className="avatar" style={{background:"#00E5FF"}}>AL</div>
-                  <div className="avatar" style={{background:"#F97316"}}>JC</div>
-                  <div className="avatar" style={{background:"#9333EA"}}>TF</div>
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=1" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=5" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=12" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=32" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=26" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=47" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=44" alt="" />
+                  <img className="avatar-img" src="https://i.pravatar.cc/80?img=20" alt="" />
                 </div>
                 <span>Usado por mais de 30.000 visionários</span>
               </div>
@@ -665,7 +688,7 @@ export default function Calculator() {
           {/* ════════ STEP 4: DRILLING ════════ */}
           {step === 4 && (
             <div className="drilling">
-              <div className="d-icon">⛏️</div>
+              <ProgressRing progress={Math.min(100, (drillingStep / (DRILL_STEPS.length - 1)) * 100)} />
               <div className="d-title">ANALISANDO SEU MERCADO</div>
               <div>
                 {DRILL_STEPS.map((s, i) => (
@@ -678,26 +701,22 @@ export default function Calculator() {
                     <span>{i < drillingStep ? "✓ " : ""}{s.text}</span>
                     {i === 0 && i < drillingStep && data.mercadoConfirmado && (
                       <span className="drill-result">
-                        Mercado: {data.mercadoConfirmado.setor_formatado}
+                        {data.mercadoConfirmado.setor_formatado}
                       </span>
                     )}
                     {i === 1 && i < drillingStep && (
                       <span className="drill-result">14 oportunidades encontradas</span>
                     )}
-                    {i === 2 && i < drillingStep && counterVal > 0 && (
-                      <span className="drill-amount">{fmt(counterVal)} de riqueza descoberta!</span>
-                    )}
                   </div>
                 ))}
               </div>
-              <div className="pbar">
-                <div
-                  className="pfill"
-                  style={{
-                    width: `${Math.min(100, (drillingStep / (DRILL_STEPS.length - 1)) * 100)}%`,
-                  }}
-                />
-              </div>
+
+              {counterVal > 0 && (
+                <div className="drill-amount-box">
+                  <div className="drill-amount">{fmt(counterVal)}</div>
+                  <div className="drill-amount-sub">de riqueza descoberta!</div>
+                </div>
+              )}
 
               {drillingDone && (
                 <div className="drill-wow">
@@ -784,6 +803,27 @@ export default function Calculator() {
                     p12={ideaAny.projecao_12m || 0}
                     p24={ideaAny.projecao_24m || idea.potencial_anual}
                   />
+                )}
+
+                {ideaAny.publico_alvo && (
+                  <div className="idea-info-box idea-publico">
+                    <div className="idea-info-label">🎯 PÚBLICO-ALVO</div>
+                    <div className="idea-info-text">{ideaAny.publico_alvo}</div>
+                  </div>
+                )}
+
+                {ideaAny.exemplo_real && (
+                  <div className="idea-info-box idea-exemplo">
+                    <div className="idea-info-label">💡 EXEMPLO DE MERCADO</div>
+                    <div className="idea-info-text">{ideaAny.exemplo_real}</div>
+                  </div>
+                )}
+
+                {ideaAny.primeiro_passo && (
+                  <div className="idea-info-box idea-passo">
+                    <div className="idea-info-label">🚀 PRIMEIRO PASSO</div>
+                    <div className="idea-info-text">{ideaAny.primeiro_passo}</div>
+                  </div>
                 )}
 
                 <div className="idea-cuidados">
@@ -1050,13 +1090,13 @@ export default function Calculator() {
                   </div>
 
                   <a
-                    href={CALENDLY_URL}
+                    href={CONSULTORIA_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{ textDecoration: "none", display: "block" }}
                   >
                     <button className="btn-gold">
-                      AGENDAR MINHA SESSÃO DE DESBLOQUEIO
+                      QUERO MINHA SESSÃO DE DESBLOQUEIO
                     </button>
                   </a>
 

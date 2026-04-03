@@ -65,8 +65,7 @@ body{background:#07090F;font-family:'Outfit',sans-serif;color:#E2DDD4;min-height
 /* DRILLING */
 .drilling{padding:36px 14px;text-align:center}
 @media(min-width:420px){.drilling{padding:44px 28px}}
-.d-icon{font-size:44px;animation:bob 1.6s ease-in-out infinite;margin-bottom:20px}
-@keyframes bob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-8px) rotate(5deg)}}
+.d-icon{font-size:44px;margin-bottom:20px}
 .d-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:4px;color:#C9A84C;margin-bottom:28px}
 .d-step{display:flex;align-items:center;gap:11px;padding:12px 0;font-size:15px;color:rgba(226,221,212,.55);letter-spacing:.5px;transition:all .35s;border-bottom:1px solid rgba(201,168,76,.055)}
 .d-step.active{color:#E2DDD4}
@@ -286,7 +285,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .comparison-col.bloqueada .comparison-val{color:rgba(226,221,212,.4)}
 .comparison-col.desbloqueada .comparison-val{color:var(--green)}
 
-.social-proof{text-align:center;font-size:14px;color:rgba(226,221,212,.5);letter-spacing:1px;margin-top:18px}
+/* old social-proof override removed - see new version above */
 
 .time-badge{text-align:center;font-size:15px;color:rgba(201,168,76,.7);margin-bottom:22px;letter-spacing:.5px;line-height:1.5}
 
@@ -310,8 +309,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 /* ─── STEP 4: DRILLING v2 ─── */
 .drill-result{display:inline;font-size:12px;color:rgba(201,168,76,.7);margin-left:8px;font-weight:500}
-.drill-amount{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#C9A84C;letter-spacing:1px;margin-top:4px;display:block}
-@media(min-width:420px){.drill-amount{font-size:40px}}
+/* drill-amount moved to drill-amount-box section below */
 .drill-wow{margin-top:28px;animation:fadeup .5s ease}
 .drill-wow-text{font-size:16px;color:rgba(226,221,212,.85);line-height:1.5;margin-bottom:18px}
 
@@ -444,10 +442,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .back-btn:hover{color:rgba(201,168,76,.85)}
 
 /* ─── SOCIAL PROOF AVATARS ─── */
-.social-proof{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:18px}
-.social-avatars{display:flex;gap:-4px}
-.avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#07090F;margin-left:-6px;border:2px solid #0E1521}
-.avatar:first-child{margin-left:0}
+.social-proof{display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:18px}
+.social-proof span{font-size:13px;color:rgba(226,221,212,.5);letter-spacing:.5px}
+.social-avatars{display:flex;align-items:center;justify-content:center}
 
 /* ─── COMPARISON CONTEXT ─── */
 .comparison-context{font-size:14px;color:rgba(226,221,212,.55);text-align:center;margin-bottom:16px;line-height:1.5}
@@ -488,3 +485,28 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .plano-intro-icon{font-size:20px;flex-shrink:0;margin-top:2px}
 .plano-phase{position:relative;padding-left:32px}
 .plano-phase-icon{position:absolute;left:8px;top:14px;font-size:16px}
+
+/* ─── PHOTO AVATARS ─── */
+.avatar-img{width:36px;height:36px;border-radius:50%;object-fit:cover;margin-left:-8px;border:2px solid #0E1521;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.avatar-img:first-child{margin-left:0}
+
+/* ─── PROGRESS RING (drilling) ─── */
+.progress-ring-wrap{position:relative;width:80px;height:80px;margin:0 auto 20px}
+.progress-ring-svg{transform:rotate(-90deg)}
+.progress-ring-bg{fill:none;stroke:rgba(201,168,76,.1);stroke-linecap:round}
+.progress-ring-fill{fill:none;stroke:#C9A84C;stroke-linecap:round;transition:stroke-dashoffset .6s ease;filter:drop-shadow(0 0 6px rgba(201,168,76,.5))}
+.progress-ring-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:22px;color:#C9A84C;letter-spacing:1px}
+
+/* ─── DRILL AMOUNT BOX ─── */
+.drill-amount-box{text-align:center;margin-top:20px;padding:16px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.15)}
+.drill-amount{font-family:'Bebas Neue',sans-serif;font-size:32px;color:#C9A84C;letter-spacing:1px;line-height:1}
+@media(min-width:420px){.drill-amount{font-size:40px}}
+.drill-amount-sub{font-size:14px;color:rgba(226,221,212,.6);margin-top:4px}
+
+/* ─── IDEA INFO BOXES ─── */
+.idea-info-box{padding:12px 14px;margin-bottom:12px;border:1px solid rgba(201,168,76,.08);background:rgba(255,255,255,.02)}
+.idea-info-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,.65);margin-bottom:5px;font-weight:600}
+.idea-info-text{font-size:14px;color:rgba(226,221,212,.8);line-height:1.55}
+.idea-publico{border-left:3px solid #C9A84C}
+.idea-exemplo{border-left:3px solid var(--green);background:rgba(34,197,94,.03)}
+.idea-passo{border-left:3px solid #00E5FF;background:rgba(0,229,255,.03)}

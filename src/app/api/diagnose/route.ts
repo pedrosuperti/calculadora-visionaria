@@ -53,6 +53,9 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
       "cuidados": "1 frase honesta sobre o principal risco ou cuidado",
       "usa_ia": true,
       "como_usa_ia": "1-2 frases explicando como IA é usada nessa ideia",
+      "exemplo_real": "1 exemplo real ou analogia de mercado que valida essa ideia",
+      "primeiro_passo": "O primeiro passo concreto para começar essa ideia essa semana",
+      "publico_alvo": "Quem exatamente pagaria por isso (perfil do cliente ideal)",
       "projecao_6m": 150000,
       "projecao_12m": 350000,
       "projecao_24m": 500000
@@ -115,6 +118,14 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
 
 export async function POST(request: NextRequest) {
   try {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error("ANTHROPIC_API_KEY not configured");
+      return NextResponse.json(
+        { error: "Serviço de IA não configurado. Entre em contato com o suporte." },
+        { status: 503 }
+      );
+    }
+
     const data: DiagnoseInput = await request.json();
 
     if (!data.mercado?.trim() || !data.mercadoConfirmado) {
