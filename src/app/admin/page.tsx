@@ -36,12 +36,16 @@ const COUNTRY_NAMES: Record<string, string> = {
   IN: "Índia", UY: "Uruguai", PE: "Peru", PY: "Paraguai", EC: "Equador",
   BO: "Bolívia", VE: "Venezuela", AO: "Angola", MZ: "Moçambique",
 };
-// ISO_A2 → ISO_A3 for map matching
-const ISO2_TO_ISO3: Record<string, string> = {
-  BR: "BRA", US: "USA", PT: "PRT", GB: "GBR", AR: "ARG", MX: "MEX",
-  CO: "COL", CL: "CHL", DE: "DEU", FR: "FRA", ES: "ESP", IT: "ITA",
-  JP: "JPN", CA: "CAN", AU: "AUS", IN: "IND", UY: "URY", PE: "PER",
-  PY: "PRY", EC: "ECU", BO: "BOL", VE: "VEN", AO: "AGO", MZ: "MOZ",
+// ISO_A2 → UN M49 numeric ID (used by world-atlas TopoJSON)
+const ISO2_TO_NUM: Record<string, string> = {
+  BR: "076", US: "840", PT: "620", GB: "826", AR: "032", MX: "484",
+  CO: "170", CL: "152", DE: "276", FR: "250", ES: "724", IT: "380",
+  JP: "392", CA: "124", AU: "036", IN: "356", UY: "858", PE: "604",
+  PY: "600", EC: "218", BO: "068", VE: "862", AO: "024", MZ: "508",
+  NL: "528", PL: "616", RU: "643", CN: "156", KR: "410", SA: "682",
+  ZA: "710", NG: "566", EG: "818", IL: "376", AE: "784", SG: "702",
+  NZ: "554", IE: "372", SE: "752", NO: "578", DK: "208", FI: "246",
+  BE: "056", AT: "040", CH: "756", CZ: "203", HU: "348", RO: "642",
 };
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────
@@ -541,12 +545,12 @@ export default function AdminDashboard() {
     return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([code, count]) => ({ code, count }));
   }, [calcEvents]);
 
-  // Country map data (ISO_A3 → count)
+  // Country map data (numeric ID → count)
   const countryMapData = useMemo(() => {
     const map: Record<string, number> = {};
     countryChart.forEach(({ code, count }) => {
-      const iso3 = ISO2_TO_ISO3[code] || code;
-      map[iso3] = count;
+      const numId = ISO2_TO_NUM[code];
+      if (numId) map[numId] = count;
     });
     return map;
   }, [countryChart]);
@@ -1047,8 +1051,8 @@ export default function AdminDashboard() {
                 <Geographies geography={WORLD_GEO}>
                   {({ geographies }) =>
                     geographies.map((geo) => {
-                      const iso3 = geo.properties.ISO_A3 || geo.id || "";
-                      const count = countryMapData[iso3] || 0;
+                      const geoId = geo.id || "";
+                      const count = countryMapData[geoId] || 0;
                       const intensity = count > 0 ? Math.min(count / maxCountryCount, 1) : 0;
                       return (
                         <Geography
