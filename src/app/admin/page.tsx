@@ -1343,6 +1343,10 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            <a href={`/admin/lead/${selectedLead.id}`} target="_blank" rel="noopener noreferrer" className="adm-modal-ficha-link">
+              Abrir ficha completa →
+            </a>
+
             {/* Tabs */}
             <div className="adm-modal-tabs">
               <button className={`adm-modal-tab${modalTab === "perfil" ? " active" : ""}`} onClick={() => setModalTab("perfil")}>
