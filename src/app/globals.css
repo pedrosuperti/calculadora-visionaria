@@ -49,6 +49,19 @@ body{background:#07090F;font-family:'Outfit',sans-serif;color:#E2DDD4;min-height
 .f input::placeholder,.f textarea::placeholder{color:rgba(226,221,212,.28)}
 .f input:focus,.f select:focus,.f textarea:focus{border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.03)}
 .f-hint{font-size:13px;color:rgba(226,221,212,.5);margin-top:6px}
+
+/* Phone input overrides */
+.react-international-phone-input-container{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.14);transition:border-color .2s}
+.react-international-phone-input-container:focus-within{border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.03)}
+.phone-input-field{background:transparent !important;border:none !important;color:#E2DDD4 !important;font-family:'Outfit',sans-serif !important;font-size:16px !important;padding:16px 12px !important;min-height:48px !important;width:100% !important}
+.phone-input-field::placeholder{color:rgba(226,221,212,.28) !important}
+.phone-country-btn{background:transparent !important;border:none !important;border-right:1px solid rgba(201,168,76,.14) !important;padding:8px 10px !important;min-height:48px !important}
+.react-international-phone-country-selector-dropdown{background:#0D1117 !important;border:1px solid rgba(201,168,76,.2) !important;max-height:200px}
+.react-international-phone-country-selector-dropdown__list-item{color:#E2DDD4 !important}
+.react-international-phone-country-selector-dropdown__list-item:hover{background:rgba(201,168,76,.1) !important}
+.react-international-phone-country-selector-dropdown__list-item--selected{background:rgba(201,168,76,.15) !important}
+.react-international-phone-country-selector-dropdown input{background:rgba(255,255,255,.05) !important;border:1px solid rgba(201,168,76,.15) !important;color:#E2DDD4 !important;padding:8px !important}
+.react-international-phone-dial-code-preview{color:rgba(226,221,212,.6) !important}
 .row2{display:grid;grid-template-columns:1fr;gap:12px}
 .row3{display:grid;grid-template-columns:1fr;gap:12px}
 @media(min-width:420px){.row2{grid-template-columns:1fr 1fr;gap:14px}}

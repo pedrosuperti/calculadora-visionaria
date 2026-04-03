@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
 import type {
   WizardStep,
   WizardData,
@@ -82,18 +84,6 @@ function stepToIndex(step: WizardStep): number {
 
 const CONSULTORIA_URL = "https://sis39334.forms.app/aplicacao-consultoria-1";
 
-function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  // International: starts with + and non-55 code
-  if (value.startsWith("+") && !digits.startsWith("55")) {
-    return "+" + digits;
-  }
-  // Brazilian format
-  if (digits.length <= 2) return digits;
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 11) return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-}
 
 // Map step to previous step for back navigation
 function prevStep(step: WizardStep): WizardStep | null {
@@ -958,13 +948,13 @@ export default function Calculator() {
               <div className="step-subtitle">Essas informações ajudam a IA a calibrar seu plano de 90 dias.</div>
 
               <div className="f">
-                <label>WhatsApp (com DDD)</label>
-                <input
-                  type="tel"
-                  placeholder="(11) 99999-9999"
+                <label>WhatsApp</label>
+                <PhoneInput
+                  defaultCountry="br"
                   value={data.whatsapp}
-                  onChange={(e) => set("whatsapp", formatPhone(e.target.value))}
-                  maxLength={16}
+                  onChange={(phone) => set("whatsapp", phone)}
+                  inputClassName="phone-input-field"
+                  countrySelectorStyleProps={{ buttonClassName: "phone-country-btn" }}
                 />
               </div>
 
