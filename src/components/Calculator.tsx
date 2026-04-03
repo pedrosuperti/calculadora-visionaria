@@ -1040,13 +1040,14 @@ export default function Calculator() {
 
               <div className="option-grid">
                 {DORES_OPTIONS.map((opt) => (
-                  <div
+                  <button
+                    type="button"
                     key={opt.id}
                     className={`option-chip${data.dores.includes(opt.id) ? " selected" : ""}${opt.highlight ? " highlight" : ""}`}
                     onClick={() => toggleArray("dores", opt.id)}
                   >
                     {opt.label}
-                  </div>
+                  </button>
                 ))}
               </div>
 
@@ -1546,7 +1547,7 @@ export default function Calculator() {
                   </>
                 )}
 
-                {/* WARM: sessão com valor reduzido */}
+                {/* WARM: sessão gratuita também */}
                 {!isHot && !isCold && (
                   <>
                     <div className="step-title">{data.nome}, você tem potencial</div>
@@ -1560,11 +1561,11 @@ export default function Calculator() {
                     </div>
 
                     <div className="elegivel-desc">
-                      Oferecemos sessões estratégicas de 40 minutos com um especialista em diferenciação para te mostrar como atacar essas oportunidades. Normalmente custa R$1 mil.
+                      Estamos oferecendo sessões estratégicas de 40 minutos com um especialista em diferenciação da equipe do Pedro Superti para te mostrar como atacar essas oportunidades e implementar nos próximos 90 dias.
                     </div>
 
                     <div className="elegivel-price">
-                      Pelo seu perfil, liberamos uma condição especial: <strong>sessão por R$297</strong> (valor promocional para perfis selecionados pela calculadora).
+                      Essa sessão normalmente custa <strong>R$1 mil</strong>. Mas pela sua participação na Calculadora Visionária, liberamos uma sessão <strong>sem custo nenhum</strong> para você.
                     </div>
 
                     <a
@@ -1574,7 +1575,7 @@ export default function Calculator() {
                       style={{ textDecoration: "none", display: "block", width: "100%" }}
                     >
                       <button className="btn-gold">
-                        QUERO MINHA SESSÃO ESTRATÉGICA
+                        QUERO MINHA SESSÃO ESTRATÉGICA GRATUITA
                       </button>
                     </a>
 
@@ -1622,17 +1623,6 @@ export default function Calculator() {
                     >
                       SALVAR MEU RELATÓRIO COMPLETO (PDF)
                     </button>
-
-                    <div className="nurture-upgrade">
-                      Quer acelerar esses resultados com ajuda de um especialista?
-                      <a
-                        href={CONSULTORIA_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Conheça nossa consultoria
-                      </a>
-                    </div>
                   </>
                 )}
               </div>

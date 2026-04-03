@@ -153,6 +153,7 @@ export default function AdminDashboard() {
   }, [authed, fetchLeads]);
 
   const [page, setPage] = useState<"home" | "leads" | "analytics">("home");
+  const [sideOpen, setSideOpen] = useState(false);
   const [calcEvents, setCalcEvents] = useState<CalcEvent[]>([]);
 
   const fetchCalcAnalytics = useCallback(async () => {
@@ -523,13 +524,14 @@ export default function AdminDashboard() {
   return (
     <div className="adm">
       {/* ═══ SIDEBAR ═══ */}
-      <aside className="adm-side">
+      {sideOpen && <div className="adm-side-overlay" onClick={() => setSideOpen(false)} />}
+      <aside className={`adm-side${sideOpen ? " open" : ""}`}>
         <div className="adm-side-brand">V.I.S.O.R.</div>
         <div className="adm-side-sub">Central de Leads</div>
         <nav className="adm-side-nav">
-          <button className={`adm-nav${page === "home" ? " active" : ""}`} onClick={() => setPage("home")}>Dashboard</button>
-          <button className={`adm-nav${page === "leads" ? " active" : ""}`} onClick={() => setPage("leads")}>Leads</button>
-          <button className={`adm-nav${page === "analytics" ? " active" : ""}`} onClick={() => setPage("analytics")}>Analytics</button>
+          <button className={`adm-nav${page === "home" ? " active" : ""}`} onClick={() => { setPage("home"); setSideOpen(false); }}>Dashboard</button>
+          <button className={`adm-nav${page === "leads" ? " active" : ""}`} onClick={() => { setPage("leads"); setSideOpen(false); }}>Leads</button>
+          <button className={`adm-nav${page === "analytics" ? " active" : ""}`} onClick={() => { setPage("analytics"); setSideOpen(false); }}>Analytics</button>
         </nav>
         <div className="adm-side-actions">
           <a href="/api/admin/leads/export" className="adm-nav" download>Exportar CSV</a>
@@ -542,6 +544,7 @@ export default function AdminDashboard() {
 
       {/* ═══ MAIN CONTENT ═══ */}
       <main className="adm-main">
+        <button className="adm-hamburger" onClick={() => setSideOpen(true)}>&#9776;</button>
 
         {/* KPI Row - always visible */}
         <div className="adm-kpis">
