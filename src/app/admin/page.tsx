@@ -772,6 +772,7 @@ export default function AdminDashboard() {
         </nav>
         <div className="adm-side-actions">
           <a href="/api/admin/leads/export" className="adm-nav" download>Exportar CSV</a>
+          <a href="/admin/sync" className="adm-nav">Sync Forms.app</a>
           <button className="adm-nav" onClick={fetchLeads} disabled={loading}>{loading ? "..." : "Atualizar"}</button>
         </div>
         <div className="adm-side-foot">
