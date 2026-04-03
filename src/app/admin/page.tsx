@@ -69,6 +69,7 @@ interface Lead {
   notes: string;
   formsapp_completed: boolean;
   formsapp_at: string | null;
+  formsapp_data: Record<string, unknown> | null;
 }
 
 interface CalcEvent {
@@ -126,6 +127,36 @@ function timeAgo(dateStr: string): string {
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d`;
   return new Date(dateStr).toLocaleDateString("pt-BR");
+}
+
+function parseFormsAppData(data: Record<string, unknown> | null): { question: string; answer: string }[] {
+  if (!data) return [];
+  const results: { question: string; answer: string }[] = [];
+  // Forms.app sends answers/questions in various structures
+  const answers = (data.answers || data.fields || data.responses || []) as unknown[];
+  if (Array.isArray(answers)) {
+    for (const a of answers) {
+      if (a && typeof a === "object") {
+        const obj = a as Record<string, unknown>;
+        const q = String(obj.title || obj.question || obj.label || obj.field || "");
+        let v = obj.value ?? obj.answer ?? obj.response ?? "";
+        if (Array.isArray(v)) v = v.join(", ");
+        if (typeof v === "object" && v !== null) v = JSON.stringify(v);
+        const ans = String(v).trim();
+        if (q && ans) results.push({ question: q, answer: ans });
+      }
+    }
+  }
+  // Fallback: if no structured answers found, show raw key-value pairs
+  if (results.length === 0) {
+    const skip = new Set(["answers", "fields", "responses", "submissionId", "formId", "createdAt", "updatedAt"]);
+    for (const [k, v] of Object.entries(data)) {
+      if (skip.has(k) || v === null || v === undefined || v === "") continue;
+      const val = typeof v === "object" ? JSON.stringify(v) : String(v);
+      results.push({ question: k, answer: val });
+    }
+  }
+  return results;
 }
 
 function tierOrder(tier: string): number {
@@ -1246,6 +1277,28 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Forms.app responses */}
+            {selectedLead.formsapp_completed && selectedLead.formsapp_data && (() => {
+              const qa = parseFormsAppData(selectedLead.formsapp_data);
+              return qa.length > 0 ? (
+                <div className="adm-forms-section">
+                  <div className="adm-forms-header">
+                    <span className="adm-forms-icon">📋</span>
+                    <strong>Respostas da Aplicação</strong>
+                    <span className="adm-forms-date">{selectedLead.formsapp_at ? new Date(selectedLead.formsapp_at).toLocaleString("pt-BR") : ""}</span>
+                  </div>
+                  <div className="adm-forms-list">
+                    {qa.map((item, i) => (
+                      <div key={i} className="adm-forms-item">
+                        <div className="adm-forms-q">{item.question}</div>
+                        <div className="adm-forms-a">{item.answer}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null;
+            })()}
 
             {/* Details grid */}
             <div className="adm-modal-grid">
