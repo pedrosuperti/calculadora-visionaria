@@ -15,10 +15,9 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = await request.json();
-    console.log("Forms.app webhook received:", JSON.stringify(payload).slice(0, 500));
+    console.log("Forms.app webhook received:", JSON.stringify(payload).slice(0, 1000));
 
     // Extract answers - forms.app sends answers in various formats
-    // We try to find whatsapp/phone to match with existing lead
     const answers = payload.answers || payload.fields || payload.responses || payload;
 
     // Flatten all string values to search for phone number
@@ -26,6 +25,8 @@ export async function POST(request: NextRequest) {
     function extractValues(obj: unknown) {
       if (typeof obj === "string") {
         allValues.push(obj);
+      } else if (typeof obj === "number") {
+        allValues.push(String(obj));
       } else if (Array.isArray(obj)) {
         obj.forEach(extractValues);
       } else if (obj && typeof obj === "object") {
@@ -34,60 +35,90 @@ export async function POST(request: NextRequest) {
     }
     extractValues(answers);
 
-    // Try to find a phone number (digits only, 10+ chars)
-    const phoneMatch = allValues.find((v) => {
+    // Strategy 1: Find a single value with 10+ digits (full phone number)
+    let phoneDigits = "";
+    const fullPhoneMatch = allValues.find((v) => {
       const digits = v.replace(/\D/g, "");
       return digits.length >= 10;
+    });
+
+    if (fullPhoneMatch) {
+      phoneDigits = fullPhoneMatch.replace(/\D/g, "");
+    } else {
+      // Strategy 2: Forms.app splits phone into 3 fields (country, area, number)
+      // Concatenate ALL short numeric values to build the full number
+      const numericParts = allValues
+        .map((v) => v.replace(/\D/g, ""))
+        .filter((d) => d.length >= 1 && d.length <= 6);
+      const combined = numericParts.join("");
+      if (combined.length >= 10) {
+        phoneDigits = combined;
+      }
+    }
+
+    // Also try to extract name for fallback matching
+    const nameValues = allValues.filter((v) => {
+      const trimmed = v.trim();
+      return trimmed.length >= 2 && trimmed.length <= 80 && !/^\d+$/.test(trimmed) && !trimmed.includes("@");
     });
 
     const supabase = getSupabase();
     if (!supabase) {
       console.error("Supabase not configured for webhook");
-      // Still return 200 so Forms.app doesn't retry
       return NextResponse.json({ status: "ok", warning: "db not configured" });
     }
 
-    if (phoneMatch) {
-      // Try to match by phone number (strip non-digits for comparison)
-      const digits = phoneMatch.replace(/\D/g, "");
-      const last10 = digits.slice(-10);
+    // Find existing lead by whatsapp — search ALL leads
+    const { data: existingLeads } = await supabase
+      .from("leads-calculadora-visionaria")
+      .select("id, whatsapp, nome")
+      .order("created_at", { ascending: false })
+      .limit(1000);
 
-      // Find existing lead by whatsapp — search ALL leads, not just 50
-      const { data: existingLeads } = await supabase
-        .from("leads-calculadora-visionaria")
-        .select("id, whatsapp")
-        .order("created_at", { ascending: false })
-        .limit(1000);
+    let match = null;
 
-      const match = existingLeads?.find((lead) => {
+    // Try phone match first
+    if (phoneDigits.length >= 10) {
+      const last10 = phoneDigits.slice(-10);
+      match = existingLeads?.find((lead) => {
         const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
         if (leadDigits.length < 10) return false;
         const leadLast10 = leadDigits.slice(-10);
-        return leadLast10 === last10 || leadDigits.includes(last10) || digits.includes(leadLast10);
-      });
+        return leadLast10 === last10 || leadDigits.includes(last10) || phoneDigits.includes(leadLast10);
+      }) || null;
+    }
 
-      if (match) {
-        // Update existing lead with forms.app data
-        await supabase
-          .from("leads-calculadora-visionaria")
-          .update({
-            formsapp_completed: true,
-            formsapp_data: payload,
-            formsapp_at: new Date().toISOString(),
-          })
-          .eq("id", match.id);
-
-        console.log("Webhook: matched lead", match.id, "phone:", phoneMatch);
-        return NextResponse.json({ status: "ok", matched: true, lead_id: match.id });
+    // Fallback: try name match if no phone match
+    if (!match && nameValues.length > 0) {
+      for (const name of nameValues) {
+        const nameLower = name.toLowerCase().trim();
+        match = existingLeads?.find((lead) => {
+          const leadName = (lead.nome || "").toLowerCase().trim();
+          return leadName.length >= 2 && (leadName === nameLower || leadName.includes(nameLower) || nameLower.includes(leadName));
+        }) || null;
+        if (match) break;
       }
     }
 
-    // No match found - do NOT create empty lead, just log it
-    console.log("Webhook: no match found. Phone:", phoneMatch || "not found", "Payload saved to logs only.");
+    if (match) {
+      await supabase
+        .from("leads-calculadora-visionaria")
+        .update({
+          formsapp_completed: true,
+          formsapp_data: payload,
+          formsapp_at: new Date().toISOString(),
+        })
+        .eq("id", match.id);
+
+      console.log("Webhook: matched lead", match.id, "phone:", phoneDigits || "by name");
+      return NextResponse.json({ status: "ok", matched: true, lead_id: match.id });
+    }
+
+    // No match found
+    console.log("Webhook: no match found. Phone:", phoneDigits || "none", "Names:", nameValues.slice(0, 3).join(", "), "All values:", allValues.slice(0, 10).join(" | "));
     return NextResponse.json({ status: "ok", matched: false, note: "no matching lead found" });
   } catch (error) {
     console.error("Webhook error:", error);
-    // Return 200 to prevent retries on parse errors
     return NextResponse.json({ status: "error", message: String(error) }, { status: 200 });
   }
 }
