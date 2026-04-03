@@ -321,9 +321,10 @@ export default function AdminDashboard() {
     return () => clearInterval(interval);
   }, [authed, fetchLeads]);
 
-  const [page, setPage] = useState<"home" | "leads" | "analytics-leads" | "analytics-calc">("home");
+  const [page, setPage] = useState<"home" | "leads" | "lead-detail" | "analytics-leads" | "analytics-calc">("home");
   const [sideOpen, setSideOpen] = useState(false);
   const [calcEvents, setCalcEvents] = useState<CalcEvent[]>([]);
+  const [detailLeadId, setDetailLeadId] = useState<number | null>(null);
 
   const fetchCalcAnalytics = useCallback(async () => {
     try {
@@ -1284,7 +1285,7 @@ export default function AdminDashboard() {
             <div className="adm-list">
               {filtered.length === 0 && <div className="adm-empty">{loading ? "Carregando..." : "Nenhum lead encontrado."}</div>}
               {filtered.map((lead) => (
-                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setSelectedLead(lead); setModalTab("perfil"); setInsights(null); }}>
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setDetailLeadId(lead.id); setInsights(null); setPage("lead-detail"); }}>
                   <div className="adm-card-left">
                     <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
                   </div>
@@ -1310,6 +1311,226 @@ export default function AdminDashboard() {
             </div>
           </>
         )}
+
+        {/* ═══ LEAD DETAIL (FICHA) ═══ */}
+        {page === "lead-detail" && (() => {
+          const dl = leads.find((l) => l.id === detailLeadId);
+          if (!dl) return <div style={{ padding: 40, textAlign: "center", color: "rgba(226,221,212,.4)" }}>Lead não encontrado. <button className="adm-modal-ficha-link" onClick={() => setPage("leads")}>← Voltar</button></div>;
+          const qa = dl.formsapp_data ? parseFormsAppData(dl.formsapp_data) : [];
+          const tierColor = TIER_COLORS[(dl.tier || "cold") as keyof typeof TIER_COLORS];
+          const whatsappMsg = insights?.frase_gancho
+            ? `Oi ${dl.nome || ""}, tudo bem? Me chamo Alê, da equipe do Pedro Superti. ${insights.frase_gancho}`
+            : `Oi ${dl.nome || ""}, tudo bem? Me chamo Alê. Sou da equipe do Pedro Superti. Vi que você usou a Calculadora V.I.S.O.R. e seu perfil chamou atenção. Posso te fazer umas perguntas rápidas?`;
+          return (
+            <>
+              {/* Back bar */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <button className="adm-modal-ficha-link" onClick={() => { setPage("leads"); setInsights(null); }} style={{ fontSize: 14 }}>← Voltar para Leads</button>
+                <div style={{ flex: 1 }} />
+                <a
+                  href={`https://wa.me/${(dl.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="adm-ficha-topbar-wa"
+                >
+                  WhatsApp
+                </a>
+              </div>
+
+              {/* Hero */}
+              <div className="adm-ficha-hero">
+                <div className="adm-ficha-score" style={{ borderColor: tierColor }}>
+                  {dl.internal_score || 0}
+                </div>
+                <div className="adm-ficha-hero-right">
+                  <h1 className="adm-ficha-name">{dl.nome || "Lead"}</h1>
+                  <div className="adm-ficha-badges">
+                    <span className={`adm-card-tier ${dl.tier}`}>{(dl.tier || "cold").toUpperCase()}</span>
+                    {dl.formsapp_completed && <span className="adm-card-applied">APLICOU</span>}
+                    <TagBadges lead={dl} />
+                  </div>
+                  <div className="adm-ficha-meta">
+                    <span>{dl.mercado || "—"}</span>
+                    <span>·</span>
+                    <span>{dl.created_at ? new Date(dl.created_at).toLocaleString("pt-BR") : ""}</span>
+                    <span>·</span>
+                    <span>{dl.created_at ? timeAgo(dl.created_at) + " atrás" : ""}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Score bar */}
+              <div className="adm-scorebar" style={{ marginBottom: 24 }}>
+                <div className="adm-scorebar-fill" style={{ width: `${Math.min(dl.internal_score || 0, 100)}%`, background: tierColor }} />
+                <div className="adm-scorebar-marks">
+                  <span style={{ left: "40%" }}>40</span>
+                  <span style={{ left: "70%" }}>70</span>
+                </div>
+              </div>
+
+              {/* Timeline */}
+              <div className="adm-ficha-section">
+                <h2 className="adm-ficha-section-title">Jornada</h2>
+                <div className="adm-ficha-timeline">
+                  <div className="adm-ficha-tl-step done">
+                    <div className="adm-ficha-tl-dot" /><div className="adm-ficha-tl-line" />
+                    <strong>Calculadora</strong>
+                    <span>{dl.created_at ? new Date(dl.created_at).toLocaleDateString("pt-BR") : "—"}</span>
+                  </div>
+                  <div className={`adm-ficha-tl-step${dl.formsapp_completed ? " done" : ""}`}>
+                    <div className="adm-ficha-tl-dot" /><div className="adm-ficha-tl-line" />
+                    <strong>Aplicação</strong>
+                    <span>{dl.formsapp_completed ? (dl.formsapp_at ? new Date(dl.formsapp_at).toLocaleDateString("pt-BR") : "Sim") : "Pendente"}</span>
+                  </div>
+                  <div className={`adm-ficha-tl-step${dl.contact_status && dl.contact_status !== "novo" ? " done" : ""}`}>
+                    <div className="adm-ficha-tl-dot" /><div className="adm-ficha-tl-line" />
+                    <strong>Contato</strong>
+                    <span>{dl.contact_status && dl.contact_status !== "novo" ? CONTACT_LABELS[dl.contact_status] : "Pendente"}</span>
+                  </div>
+                  <div className={`adm-ficha-tl-step${dl.contact_status === "agendou" ? " done" : ""}`}>
+                    <div className="adm-ficha-tl-dot" />
+                    <strong>Agendamento</strong>
+                    <span>{dl.contact_status === "agendou" ? "Confirmado" : "Pendente"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Profile grid */}
+              <div className="adm-ficha-section">
+                <h2 className="adm-ficha-section-title">Dados do Perfil</h2>
+                <div className="adm-ficha-grid">
+                  <div className="adm-modal-field"><label>WhatsApp</label><a href={`https://wa.me/${(dl.whatsapp || "").replace(/\D/g, "")}`} target="_blank" rel="noopener noreferrer">{dl.whatsapp}</a></div>
+                  <div className="adm-modal-field"><label>Mercado</label><span>{dl.mercado || "—"}</span></div>
+                  <div className="adm-modal-field"><label>Faturamento</label><span>{dl.faturamento || "—"}</span></div>
+                  <div className="adm-modal-field"><label>Equipe</label><span>{dl.equipe || "—"}</span></div>
+                  <div className="adm-modal-field"><label>Urgência</label><span>{dl.urgencia || "—"}</span></div>
+                  <div className="adm-modal-field"><label>Investimento</label><span>{dl.investimento || "—"}</span></div>
+                </div>
+                {dl.dores && dl.dores.length > 0 && (
+                  <div className="adm-ficha-dores">
+                    <label>Dores</label>
+                    <div className="adm-ficha-dores-pills">
+                      {dl.dores.map((d, i) => <span key={i} className="adm-ficha-pill">{d}</span>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Status */}
+              <div className="adm-ficha-section">
+                <h2 className="adm-ficha-section-title">Status de Contato</h2>
+                <div className="adm-status-btns">
+                  {(["novo", "contactado", "agendou", "sem_resposta", "descartado"] as ContactStatus[]).map((s) => (
+                    <button key={s}
+                      className={`adm-status-btn${(dl.contact_status || "novo") === s ? " active" : ""}`}
+                      style={{ borderColor: CONTACT_COLORS[s], color: (dl.contact_status || "novo") === s ? "#fff" : CONTACT_COLORS[s], background: (dl.contact_status || "novo") === s ? CONTACT_COLORS[s] + "33" : "transparent" }}
+                      onClick={async () => {
+                        const updated = leads.map((l) => l.id === dl.id ? { ...l, contact_status: s } : l);
+                        setLeads(updated);
+                        await fetch("/api/admin/leads/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: dl.id, contact_status: s }) });
+                      }}
+                    >
+                      {CONTACT_LABELS[s]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="adm-ficha-section">
+                <h2 className="adm-ficha-section-title">Notas da Equipe</h2>
+                <textarea
+                  className="adm-notes"
+                  rows={5}
+                  placeholder="Ex: Vai agendar semana que vem..."
+                  value={dl.notes || ""}
+                  onChange={(e) => { const v = e.target.value; setLeads((prev) => prev.map((l) => l.id === dl.id ? { ...l, notes: v } : l)); }}
+                  onBlur={() => fetch("/api/admin/leads/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: dl.id, notes: dl.notes || "" }) })}
+                />
+              </div>
+
+              {/* Forms.app */}
+              <div className="adm-ficha-section">
+                <h2 className="adm-ficha-section-title">Formulário de Aplicação</h2>
+                {!dl.formsapp_completed ? (
+                  <div className="adm-forms-empty"><span className="adm-forms-empty-icon">📋</span><p>Este lead ainda não preencheu o formulário de aplicação.</p></div>
+                ) : qa.length > 0 ? (
+                  <div className="adm-forms-section" style={{ margin: 0 }}>
+                    <div className="adm-forms-header">
+                      <span className="adm-forms-icon">📋</span><strong>Respostas</strong>
+                      <span className="adm-forms-date">{dl.formsapp_at ? new Date(dl.formsapp_at).toLocaleString("pt-BR") : ""}</span>
+                    </div>
+                    <div className="adm-forms-list" style={{ maxHeight: "none" }}>
+                      {qa.map((item, i) => (
+                        <div key={i} className="adm-forms-item">
+                          <div className="adm-forms-q">{item.question}</div>
+                          <div className="adm-forms-a">{item.answer}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p style={{ color: "rgba(226,221,212,.4)", fontSize: 14 }}>Aplicou mas sem dados de respostas salvos.</p>
+                )}
+              </div>
+
+              {/* AI Insights */}
+              <div className="adm-ficha-section">
+                <h2 className="adm-ficha-section-title">Insights com IA</h2>
+                <div className="adm-insights-section" style={{ margin: 0 }}>
+                  {!insights && !insightsLoading && (
+                    <button className="adm-btn-insights" onClick={() => fetchInsights(dl)}>🧠 Gerar Insights com IA</button>
+                  )}
+                  {insightsLoading && (
+                    <div className="adm-insights-loading"><div className="adm-insights-spinner" /><span>Analisando perfil com IA...</span></div>
+                  )}
+                  {insights && (
+                    <div className="adm-insights-content">
+                      <div className="adm-insights-header">
+                        <span>🧠</span><strong>Insights IA</strong>
+                        <span className={`adm-insights-prob ${String(insights.probabilidade_fechamento || "").toLowerCase()}`}>{String(insights.probabilidade_fechamento || "")} chance</span>
+                        <span className="adm-insights-prod">{String(insights.produto_ideal || "")}</span>
+                      </div>
+                      <div className="adm-insights-grid">
+                        <div className="adm-insights-card"><div className="adm-insights-card-label">🔥 Maior Dor</div><div className="adm-insights-card-text">{String(insights.maior_dor || "")}</div></div>
+                        <div className="adm-insights-card"><div className="adm-insights-card-label">💪 Ponto Forte</div><div className="adm-insights-card-text">{String(insights.ponto_forte || "")}</div></div>
+                        <div className="adm-insights-card"><div className="adm-insights-card-label">⚠️ Ponto Fraco</div><div className="adm-insights-card-text">{String(insights.ponto_fraco || "")}</div></div>
+                        <div className="adm-insights-card full"><div className="adm-insights-card-label">🎯 Conexão com Ignition</div><div className="adm-insights-card-text">{String(insights.conexao_ignition || "")}</div></div>
+                      </div>
+                      <div className="adm-insights-approaches">
+                        <div className="adm-insights-card-label">💬 Sugestões de Abordagem</div>
+                        {Array.isArray(insights.abordagens) && (insights.abordagens as string[]).map((a, i) => (
+                          <div key={i} className="adm-insights-approach"><span className="adm-insights-approach-num">{i + 1}</span><span>{a}</span></div>
+                        ))}
+                      </div>
+                      <div className="adm-insights-gancho">
+                        <div className="adm-insights-card-label">🎣 Frase Gancho</div>
+                        <div className="adm-insights-gancho-text">&ldquo;{String(insights.frase_gancho || "")}&rdquo;</div>
+                      </div>
+                      {insights.alertas && String(insights.alertas).trim() !== "" ? (
+                        <div className="adm-insights-alert"><span>🚨</span> {String(insights.alertas)}</div>
+                      ) : null}
+                      <button className="adm-btn-insights regen" onClick={() => fetchInsights(dl)}>🔄 Regenerar Insights</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="adm-ficha-actions">
+                <a
+                  href={`https://wa.me/${(dl.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  className="adm-btn-whatsapp"
+                >
+                  Abrir WhatsApp {insights ? "(com frase gancho)" : ""}
+                </a>
+                <button className="adm-ficha-copy" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/admin/lead/${dl.id}`); }}>
+                  📋 Copiar link da ficha
+                </button>
+              </div>
+            </>
+          );
+        })()}
 
       </main>
 
@@ -1344,9 +1565,9 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <a href={`/admin/lead/${selectedLead.id}`} target="_blank" rel="noopener noreferrer" className="adm-modal-ficha-link">
+            <button className="adm-modal-ficha-link" onClick={() => { setDetailLeadId(selectedLead.id); setSelectedLead(null); setPage("lead-detail"); }}>
               Abrir ficha completa →
-            </a>
+            </button>
 
             {/* Tabs */}
             <div className="adm-modal-tabs">
