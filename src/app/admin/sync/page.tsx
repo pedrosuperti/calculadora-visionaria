@@ -104,21 +104,52 @@ function parseCSV(text: string): ParsedSubmission[] {
   return results;
 }
 
+// Known Forms.app field labels (used to detect label:value format)
+const KNOWN_LABELS = [
+  "nome completo", "principal e-mail", "telefone", "nome de sua empresa",
+  "quantos funcionários", "quantos funcionarios", "qual é faturamento", "qual e faturamento",
+  "faturamento mensal", "seu site", "instagram", "ramo de atuação", "ramo de atuacao",
+  "problemas ou desafios", "nível de urgência", "nivel de urgencia",
+  "como você faz o marketing", "como voce faz o marketing", "marketing",
+  "fator x", "inteligência artificial", "inteligencia artificial",
+  "algo importante", "data de envio", "id de envio",
+];
+
+function isKnownLabel(line: string): boolean {
+  const lower = line.toLowerCase().replace(/:$/, "").trim();
+  return KNOWN_LABELS.some((l) => lower.includes(l));
+}
+
 function parseFormsAppText(text: string): ParsedSubmission[] {
-  // Split by submission ID pattern (hex string at end of each record)
-  // Each record ends with a date line then an ID line
+  // Clean up: remove page markers, header repetitions
+  const cleaned = text
+    .replace(/\d+\s*-\s*\d+\s+of\s+\d+/g, "")
+    .replace(/^Aprovados:.*$/gm, "")
+    .replace(/^Contagem de registros:.*$/gm, "")
+    .replace(/^\( Os dados podem demorar.*$/gm, "");
+
+  // Strategy: split by submission ID pattern (hex at end of each record)
   const dateIdPattern = /(\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M)\s*\n\s*([a-f0-9]{10,})/g;
 
   const records: { text: string; date: string; id: string }[] = [];
   let lastEnd = 0;
   let match;
 
-  while ((match = dateIdPattern.exec(text)) !== null) {
-    const recordText = text.slice(lastEnd, match.index).trim();
+  while ((match = dateIdPattern.exec(cleaned)) !== null) {
+    const recordText = cleaned.slice(lastEnd, match.index).trim();
     if (recordText.length > 10) {
       records.push({ text: recordText, date: match[1], id: match[2] });
     }
     lastEnd = match.index + match[0].length;
+  }
+
+  // If no date+ID pattern found, try single record (just labels+values, no ID)
+  if (records.length === 0) {
+    // Check if text has known labels — treat entire text as one record
+    const lines = cleaned.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.some((l) => isKnownLabel(l))) {
+      records.push({ text: cleaned, date: "", id: "" });
+    }
   }
 
   if (records.length === 0) return [];
@@ -126,21 +157,50 @@ function parseFormsAppText(text: string): ParsedSubmission[] {
   const results: ParsedSubmission[] = [];
 
   for (const rec of records) {
-    // Split the record text into lines
     const lines = rec.text.split("\n").map((l) => l.trim()).filter(Boolean);
+    // Remove standalone page numbers
+    const cleanLines = lines.filter((l) => !(/^\d{1,2}$/.test(l)));
 
-    // Remove page markers like "1 - 50 of 57" or "51 - 57 of 57" or just "1" or "2"
-    const cleanLines = lines.filter((l) => !(/^\d+\s*-\s*\d+\s+of\s+\d+$/.test(l)) && !(/^\d{1,2}$/.test(l)));
-
-    // Map lines to fields (best effort — fields are in order)
     const answers: { title: string; value: string }[] = [];
-    for (let i = 0; i < Math.min(cleanLines.length, FORMSAPP_FIELDS.length); i++) {
-      if (cleanLines[i]) {
-        answers.push({ title: FORMSAPP_FIELDS[i], value: cleanLines[i] });
+
+    // Detect format: does it have labeled lines ("Label:" followed by value)?
+    const hasLabels = cleanLines.some((l) => l.endsWith(":") && isKnownLabel(l));
+
+    if (hasLabels) {
+      // LABELED FORMAT: "Label:\nValue" (possibly multi-line values)
+      let currentLabel = "";
+      let currentValue: string[] = [];
+
+      for (const line of cleanLines) {
+        if (line.endsWith(":") && isKnownLabel(line)) {
+          // Save previous pair
+          if (currentLabel && currentValue.length > 0) {
+            const val = currentValue.join("\n").trim();
+            if (val) answers.push({ title: currentLabel.replace(/:$/, ""), value: val });
+          }
+          currentLabel = line;
+          currentValue = [];
+        } else {
+          currentValue.push(line);
+        }
+      }
+      // Save last pair
+      if (currentLabel && currentValue.length > 0) {
+        const val = currentValue.join("\n").trim();
+        if (val) answers.push({ title: currentLabel.replace(/:$/, ""), value: val });
+      }
+    } else {
+      // FLAT FORMAT: values in order, no labels (original first paste format)
+      for (let i = 0; i < Math.min(cleanLines.length, FORMSAPP_FIELDS.length); i++) {
+        if (cleanLines[i]) {
+          answers.push({ title: FORMSAPP_FIELDS[i], value: cleanLines[i] });
+        }
       }
     }
 
-    results.push({ answers, createdAt: rec.date, submissionId: rec.id });
+    if (answers.length > 0) {
+      results.push({ answers, createdAt: rec.date, submissionId: rec.id });
+    }
   }
 
   return results;
@@ -184,9 +244,10 @@ function detectAndParse(text: string): { submissions: ParsedSubmission[]; format
     if (parsed.length > 0) return { submissions: parsed, format: "CSV" };
   }
 
-  // Try Forms.app text format (has date + hex ID pattern)
-  const hasFormsPattern = /\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M\s*\n\s*[a-f0-9]{10,}/.test(trimmed);
-  if (hasFormsPattern) {
+  // Try Forms.app text format (has date+ID pattern OR known labels)
+  const hasFormsPattern = /\d{1,2}\/\d{1,2}\/\d{4},\s*\d{1,2}:\d{2}:\d{2}\s*[AP]M/.test(trimmed);
+  const hasLabels = trimmed.split("\n").some((l) => l.trim().endsWith(":") && isKnownLabel(l.trim()));
+  if (hasFormsPattern || hasLabels) {
     const parsed = parseFormsAppText(trimmed);
     if (parsed.length > 0) return { submissions: parsed, format: "Texto Forms.app" };
   }
