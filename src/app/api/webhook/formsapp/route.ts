@@ -50,20 +50,20 @@ export async function POST(request: NextRequest) {
     if (phoneMatch) {
       // Try to match by phone number (strip non-digits for comparison)
       const digits = phoneMatch.replace(/\D/g, "");
+      const last10 = digits.slice(-10);
 
-      // Find existing lead by whatsapp (partial match on digits)
+      // Find existing lead by whatsapp — search ALL leads, not just 50
       const { data: existingLeads } = await supabase
         .from("leads-calculadora-visionaria")
         .select("id, whatsapp")
         .order("created_at", { ascending: false })
-        .limit(50);
+        .limit(1000);
 
       const match = existingLeads?.find((lead) => {
         const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
-        return leadDigits.length >= 10 && (
-          leadDigits.includes(digits.slice(-10)) ||
-          digits.includes(leadDigits.slice(-10))
-        );
+        if (leadDigits.length < 10) return false;
+        const leadLast10 = leadDigits.slice(-10);
+        return leadLast10 === last10 || leadDigits.includes(last10) || digits.includes(leadLast10);
       });
 
       if (match) {
