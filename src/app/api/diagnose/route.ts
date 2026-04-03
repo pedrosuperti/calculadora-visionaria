@@ -56,6 +56,7 @@ Responda SOMENTE com JSON válido, sem markdown, sem comentários.
       "exemplo_real": "1 exemplo real ou analogia de mercado que valida essa ideia",
       "primeiro_passo": "O primeiro passo concreto para começar essa ideia essa semana",
       "publico_alvo": "Quem exatamente pagaria por isso (perfil do cliente ideal)",
+      "valuation": 2500000,
       "projecao_6m": 150000,
       "projecao_12m": 350000,
       "projecao_24m": 500000

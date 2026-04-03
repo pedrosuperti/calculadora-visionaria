@@ -246,7 +246,12 @@ export default function Calculator() {
   const goTo = useCallback((s: WizardStep) => {
     setStep(s);
     setError("");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Force scroll to absolute top
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 50);
   }, []);
 
   const goBack = useCallback(() => {
@@ -283,20 +288,31 @@ export default function Calculator() {
   };
 
   // ── STEP 4: Drilling + Diagnose API ──
+  // Progress: steps 0-2 advance every 3s (0→25→50→75). Step 3 (100%) only when API done.
+  const [drillProgress, setDrillProgress] = useState(0);
+
   const startDrilling = useCallback(async () => {
     setDrillingStep(0);
     setDrillingDone(false);
     setCounterVal(0);
+    setDrillProgress(0);
     apiDoneRef.current = false;
 
+    // Advance steps 0→1→2 slowly (3s each), hold at step 2 until API returns
     let i = 0;
     intervalRef.current = setInterval(() => {
       i++;
-      setDrillingStep(i);
-      if (i >= DRILL_STEPS.length - 1 && intervalRef.current) {
+      if (i <= 2) {
+        setDrillingStep(i);
+        setDrillProgress(i * 25); // 25%, 50%
+      } else if (i === 3 && !apiDoneRef.current) {
+        // Hold at 75% while waiting for API
+        setDrillProgress(75);
+      }
+      if (i >= 3 && intervalRef.current) {
         clearInterval(intervalRef.current);
       }
-    }, 2000);
+    }, 3000);
 
     try {
       const res = await fetch("/api/diagnose", {
@@ -315,6 +331,11 @@ export default function Calculator() {
       setDiagnoseResult(result);
       apiDoneRef.current = true;
 
+      // Now complete the remaining steps quickly
+      setDrillingStep(3);
+      setDrillProgress(100);
+
+      // Animate counter
       const target = result.scores.riqueza_total;
       const duration = 2000;
       const start = Date.now();
@@ -333,16 +354,11 @@ export default function Calculator() {
   }, [data, goTo]);
 
   useEffect(() => {
-    if (
-      step === 4 &&
-      drillingStep >= DRILL_STEPS.length - 1 &&
-      apiDoneRef.current &&
-      diagnoseResult
-    ) {
-      const timer = setTimeout(() => setDrillingDone(true), 1000);
+    if (step === 4 && drillProgress >= 100 && apiDoneRef.current && diagnoseResult) {
+      const timer = setTimeout(() => setDrillingDone(true), 2000);
       return () => clearTimeout(timer);
     }
-  }, [step, drillingStep, diagnoseResult]);
+  }, [step, drillProgress, diagnoseResult]);
 
   useEffect(() => {
     if (step === 4) {
@@ -713,7 +729,7 @@ export default function Calculator() {
           {/* ════════ STEP 4: DRILLING ════════ */}
           {step === 4 && (
             <div className="drilling">
-              <ProgressRing progress={Math.min(100, (drillingStep / (DRILL_STEPS.length - 1)) * 100)} />
+              <ProgressRing progress={drillProgress} />
               <div className="d-title">ANALISANDO SEU MERCADO</div>
               <div>
                 {DRILL_STEPS.map((s, i) => (
@@ -820,6 +836,15 @@ export default function Calculator() {
                       <div className="idea-metric-val">{idea.dificuldade}</div>
                     </div>
                   </div>
+                  {ideaAny.valuation && (
+                    <div className="idea-metric gold-metric">
+                      <div className="idea-metric-icon">💎</div>
+                      <div>
+                        <div className="idea-metric-label">VALUATION DO NEGÓCIO</div>
+                        <div className="idea-metric-val gold">{fmt(ideaAny.valuation)}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {hasProjection && (
@@ -1003,24 +1028,36 @@ export default function Calculator() {
           {step === 8 && diagnoseResult && (
             <div className="step-content">
               <BackButton onClick={goBack} />
-              <div className="step-title">Seu diagnóstico completo</div>
+              <div className="step-title">{data.nome}, aqui está seu diagnóstico</div>
+              <div className="step-subtitle">Analisamos seu mercado e identificamos onde você está — e até onde pode chegar.</div>
 
-              <div className="scores-container">
-                <div className="score-block atual">
-                  <div className="score-block-label">SCORE ATUAL</div>
-                  <ScoreCircle score={diagnoseResult.scores.score_atual} size={100} variant="atual" />
-                  <div className="score-items">
+              {/* SCORE ATUAL - horizontal block */}
+              <div className="score-row">
+                <div className="score-row-circle">
+                  <ScoreCircle score={diagnoseResult.scores.score_atual} size={90} variant="atual" />
+                </div>
+                <div className="score-row-content">
+                  <div className="score-row-label" style={{color: "var(--orange)"}}>SUA SITUAÇÃO ATUAL</div>
+                  <div className="score-row-desc">Esse é o nível em que seu negócio opera hoje, baseado nas dores que você compartilhou:</div>
+                  <div className="score-row-items">
                     {diagnoseResult.scores.bloqueios.map((b, i) => (
-                      <div className="score-item" key={i}>{b}</div>
+                      <div className="score-row-item" key={i}><span className="sri-dot" style={{background:"var(--orange)"}} />{b}</div>
                     ))}
                   </div>
                 </div>
-                <div className="score-block visionario">
-                  <div className="score-block-label">SCORE VISIONÁRIO</div>
-                  <ScoreCircle score={diagnoseResult.scores.score_visionario} size={130} variant="visionario" />
-                  <div className="score-items">
+              </div>
+
+              {/* SCORE VISIONÁRIO - horizontal block */}
+              <div className="score-row visionario-row">
+                <div className="score-row-circle">
+                  <ScoreCircle score={diagnoseResult.scores.score_visionario} size={110} variant="visionario" />
+                </div>
+                <div className="score-row-content">
+                  <div className="score-row-label" style={{color: "var(--green)"}}>SEU POTENCIAL VISIONÁRIO</div>
+                  <div className="score-row-desc">Pela nossa análise, esse é o nível que seu negócio pode alcançar aplicando as 3 ideias:</div>
+                  <div className="score-row-items">
                     {diagnoseResult.scores.potenciais.map((p, i) => (
-                      <div className="score-item" key={i}>{p}</div>
+                      <div className="score-row-item" key={i}><span className="sri-dot" style={{background:"var(--green)"}} />{p}</div>
                     ))}
                   </div>
                 </div>
@@ -1037,7 +1074,7 @@ export default function Calculator() {
               )}
 
               <button className="btn-drill" onClick={() => goTo(9)}>
-                QUAL MEU PRÓXIMO PASSO?
+                COMO ACESSAR ESSA RIQUEZA?
               </button>
             </div>
           )}
@@ -1046,140 +1083,109 @@ export default function Calculator() {
           {step === 9 && diagnoseResult && (
             <div className="elegivel-section step-content">
               <BackButton onClick={goBack} />
-              {/* Summary card - screenshottable */}
+
+              <div className="step-title">Como acessar essa riqueza?</div>
+              <div className="final-intro">
+                Analisando seu caso, estas são as oportunidades que identificamos que sua concorrência ainda não está explorando no seu mercado:
+              </div>
+
+              {/* 3 ideas summary */}
+              <div className="final-ideas">
+                {diagnoseResult.ideias.map((idea, i) => (
+                  <div className="final-idea" key={i}>
+                    <div className="final-idea-num">#{i + 1}</div>
+                    <div className="final-idea-body">
+                      <div className="final-idea-name">{idea.nome}</div>
+                      <div className="final-idea-val">{fmt(idea.potencial_anual)}/ano</div>
+                    </div>
+                    {idea.usa_ia && <div className="final-idea-tag">IA</div>}
+                  </div>
+                ))}
+              </div>
+
+              {/* Scores row: atual small, visionário big, riqueza below */}
+              <div className="final-scores">
+                <div className="final-score-atual">
+                  <div className="final-score-label">Score Atual</div>
+                  <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
+                </div>
+                <div className="final-score-arrow">→</div>
+                <div className="final-score-vis">
+                  <div className="final-score-label">Score Visionário</div>
+                  <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
+                </div>
+              </div>
+
+              <div className="final-riqueza">
+                <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR NOS PRÓXIMOS 12 MESES</div>
+                <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
+              </div>
+
+              {diagnoseResult.insight && (
+                <div className="insight">&ldquo;{diagnoseResult.insight}&rdquo;</div>
+              )}
+
+              {/* CTA - same for all */}
+              <div className="final-cta-section">
+                <div className="final-cta-text">
+                  Quer um plano personalizado para desbloquear essa riqueza com a ajuda de um especialista?
+                </div>
+                <a
+                  href={CONSULTORIA_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ textDecoration: "none", display: "block" }}
+                >
+                  <button className="btn-gold">
+                    QUERO MINHA CONSULTORIA DE DESBLOQUEIO
+                  </button>
+                </a>
+              </div>
+
+              {/* Screenshot card */}
               <div className="summary-card">
                 <div className="summary-header">
                   <div>
                     <div className="summary-name">{data.nome}</div>
-                    <div className="summary-sector">
-                      {data.mercadoConfirmado?.setor_formatado}
-                    </div>
+                    <div className="summary-sector">{data.mercadoConfirmado?.setor_formatado}</div>
                   </div>
                   <div className="summary-brand">Calculadora de Riqueza</div>
                 </div>
-
                 <div className="summary-ideas">
                   {diagnoseResult.ideias.map((idea, i) => (
                     <div className="summary-idea" key={i}>
-                      <span className="summary-idea-name">
-                        #{i + 1} {idea.nome}
-                      </span>
-                      <span className="summary-idea-val">
-                        {fmt(idea.potencial_anual)}
-                      </span>
+                      <span className="summary-idea-name">#{i + 1} {idea.nome}</span>
+                      <span className="summary-idea-val">{fmt(idea.potencial_anual)}</span>
                     </div>
                   ))}
                 </div>
-
                 <div className="summary-scores">
                   <div className="summary-score-item">
-                    <div className="summary-score-label">SCORE ATUAL</div>
-                    <div className="summary-score-val" style={{ color: "var(--orange)" }}>
-                      {diagnoseResult.scores.score_atual}
-                    </div>
+                    <div className="summary-score-label">ATUAL</div>
+                    <div className="summary-score-val" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
                   </div>
                   <div className="summary-score-item">
-                    <div className="summary-score-label">SCORE VISIONÁRIO</div>
-                    <div className="summary-score-val" style={{ color: "var(--green)" }}>
-                      {diagnoseResult.scores.score_visionario}
-                    </div>
+                    <div className="summary-score-label">VISIONÁRIO</div>
+                    <div className="summary-score-val" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
                   </div>
                   <div className="summary-score-item">
-                    <div className="summary-score-label">RIQUEZA TOTAL</div>
-                    <div className="summary-score-val" style={{ color: "#C9A84C" }}>
-                      {fmt(diagnoseResult.scores.riqueza_total)}
-                    </div>
+                    <div className="summary-score-label">RIQUEZA</div>
+                    <div className="summary-score-val" style={{color: "#C9A84C"}}>{fmt(diagnoseResult.scores.riqueza_total)}</div>
                   </div>
                 </div>
-
                 <div className="summary-footer">
                   <div className="summary-footer-text">Análise por IA · @pedrosuperti</div>
                   <div className="summary-footer-brand">PEDROSUPERTI.COM.BR</div>
                 </div>
               </div>
 
-              {/* QUALIFIED PATH */}
-              {leadResult?.qualified && (
-                <>
-                  <div className="top-percent-text">
-                    Você está entre os top <strong>{leadResult.topPercent}%</strong> dos
-                    empreendedores que fizeram esse assessment.
-                  </div>
-
-                  <div className="elegivel-badge">STATUS: ELEGÍVEL</div>
-
-                  <div className="elegivel-desc">
-                    Seu perfil se qualifica para uma{" "}
-                    <strong>Sessão de Desbloqueio</strong> com um especialista da
-                    equipe Pedro Superti (valor: R$1.000). Vagas limitadas.
-                  </div>
-
-                  <a
-                    href={CONSULTORIA_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: "none", display: "block" }}
-                  >
-                    <button className="btn-gold">
-                      QUERO MINHA SESSÃO DE DESBLOQUEIO
-                    </button>
-                  </a>
-
-                  <button
-                    className="btn-sec"
-                    style={{ width: "100%", marginTop: 10 }}
-                    onClick={() => window.print()}
-                  >
-                    Salvar minha análise
-                  </button>
-                </>
-              )}
-
-              {/* NOT QUALIFIED PATH */}
-              {leadResult && !leadResult.qualified && (
-                <>
-                  <div className="nurture-tip">
-                    Comece pela{" "}
-                    <strong>
-                      Ideia #
-                      {(() => {
-                        const easiest = diagnoseResult.ideias.reduce(
-                          (best, idea, i) =>
-                            idea.dificuldade === "Facil" ||
-                            idea.tempo_retorno_dias <
-                              diagnoseResult.ideias[best].tempo_retorno_dias
-                              ? i
-                              : best,
-                          0
-                        );
-                        return easiest + 1;
-                      })()}
-                    </strong>
-                    . Você pode começar a implementar essa semana.
-                  </div>
-
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(
-                      "Quero receber o guia gratuito da Calculadora de Riqueza Visionária!"
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{ textDecoration: "none", display: "block" }}
-                  >
-                    <button className="btn-drill" style={{ width: "100%" }}>
-                      RECEBER GUIA GRATUITO POR WHATSAPP
-                    </button>
-                  </a>
-
-                  <button
-                    className="btn-sec"
-                    style={{ width: "100%", marginTop: 10 }}
-                    onClick={() => window.print()}
-                  >
-                    Salvar minha análise
-                  </button>
-                </>
-              )}
+              <button
+                className="btn-sec"
+                style={{ width: "100%", marginTop: 10 }}
+                onClick={() => window.print()}
+              >
+                Salvar minha análise
+              </button>
             </div>
           )}
         </div>

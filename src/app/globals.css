@@ -510,3 +510,41 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .idea-publico{border-left:3px solid #C9A84C}
 .idea-exemplo{border-left:3px solid var(--green);background:rgba(34,197,94,.03)}
 .idea-passo{border-left:3px solid #00E5FF;background:rgba(0,229,255,.03)}
+
+/* ─── STEP 8: SCORE ROWS (horizontal layout) ─── */
+.score-row{display:flex;gap:16px;align-items:flex-start;padding:18px;margin-bottom:16px;background:rgba(255,255,255,.02);border:1px solid rgba(201,168,76,.08)}
+.score-row.visionario-row{background:rgba(34,197,94,.03);border-color:rgba(34,197,94,.12)}
+.score-row-circle{flex-shrink:0}
+.score-row-content{flex:1;min-width:0}
+.score-row-label{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:6px}
+.score-row-desc{font-size:13px;color:rgba(226,221,212,.55);line-height:1.5;margin-bottom:10px}
+.score-row-items{display:flex;flex-direction:column;gap:6px}
+.score-row-item{font-size:14px;color:rgba(226,221,212,.8);line-height:1.4;display:flex;align-items:flex-start;gap:8px}
+.sri-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:7px}
+@media(max-width:420px){.score-row{flex-direction:column;align-items:center;text-align:center}.score-row-items{align-items:center}}
+
+/* ─── STEP 9: FINAL PAGE ─── */
+.final-intro{font-size:15px;color:rgba(226,221,212,.65);line-height:1.6;margin-bottom:22px}
+.final-ideas{margin-bottom:24px}
+.final-idea{display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(201,168,76,.08);margin-bottom:8px}
+.final-idea-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:rgba(201,168,76,.6);flex-shrink:0;width:28px}
+.final-idea-body{flex:1;min-width:0}
+.final-idea-name{font-size:15px;color:#E2DDD4;font-weight:500;margin-bottom:2px}
+.final-idea-val{font-family:'Bebas Neue',sans-serif;font-size:18px;color:#C9A84C}
+.final-idea-tag{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:3px 8px;background:rgba(0,229,255,.12);color:#00E5FF;border:1px solid rgba(0,229,255,.25);flex-shrink:0;font-weight:700}
+
+.final-scores{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:20px;padding:16px}
+.final-score-atual{text-align:center}
+.final-score-vis{text-align:center}
+.final-score-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:rgba(226,221,212,.5);margin-bottom:4px}
+.final-score-num{font-family:'Bebas Neue',sans-serif;font-size:28px}
+.final-score-num-big{font-family:'Bebas Neue',sans-serif;font-size:42px}
+.final-score-arrow{font-size:24px;color:rgba(201,168,76,.4)}
+
+.final-riqueza{text-align:center;padding:18px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.18);margin-bottom:20px}
+.final-riqueza-label{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(201,168,76,.7);margin-bottom:6px}
+.final-riqueza-val{font-family:'Bebas Neue',sans-serif;font-size:38px;color:#C9A84C;letter-spacing:1px}
+@media(min-width:400px){.final-riqueza-val{font-size:46px}}
+
+.final-cta-section{margin-bottom:24px}
+.final-cta-text{font-size:16px;color:rgba(226,221,212,.75);line-height:1.6;margin-bottom:16px;text-align:center}
