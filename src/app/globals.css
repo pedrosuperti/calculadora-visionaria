@@ -668,7 +668,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .adm-chart-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);padding:20px;transition:border-color .2s}
 .adm-chart-card:hover{border-color:rgba(201,168,76,.15)}
 .adm-chart-card.full{width:100%}
-.adm-chart-title{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:rgba(201,168,76,.6);margin-bottom:16px}
+.adm-chart-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:rgba(201,168,76,.6);margin-bottom:16px}
 
 /* Top Markets horizontal bars */
 .adm-markets{display:flex;flex-direction:column;gap:10px}
@@ -792,7 +792,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .adm-mini-card-meta{display:block;font-size:10px;color:rgba(226,221,212,.3)}
 
 /* Section title */
-.adm-section-title{font-family:'Bebas Neue',sans-serif;font-size:16px;color:rgba(201,168,76,.5);letter-spacing:2px;margin:8px 0 12px}
+.adm-section-title{font-family:'Bebas Neue',sans-serif;font-size:22px;color:rgba(201,168,76,.5);letter-spacing:3px;margin:8px 0 14px}
 
 /* View all button */
 .adm-view-all{display:block;width:100%;padding:12px;background:transparent;border:1px solid rgba(201,168,76,.15);color:#C9A84C;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;cursor:pointer;margin-top:10px;transition:all .2s}
