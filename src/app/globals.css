@@ -585,6 +585,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 .elegivel-badge{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 24px;background:rgba(34,197,94,.08);border:2px solid rgba(34,197,94,.35);margin-bottom:20px}
 .elegivel-badge-icon{width:28px;height:28px;border-radius:50%;background:var(--green);color:#07090F;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0}
 .elegivel-badge-text{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:3px;color:var(--green)}
+.warm-badge{background:rgba(201,168,76,.08);border-color:rgba(201,168,76,.35)}
+.warm-badge .elegivel-badge-icon{background:#C9A84C}
+.warm-badge .elegivel-badge-text{color:#C9A84C}
 .elegivel-desc{font-size:15px;color:rgba(226,221,212,.75);line-height:1.7;text-align:center;margin-bottom:20px}
 .elegivel-price{font-size:16px;color:#E2DDD4;line-height:1.7;text-align:center;margin-bottom:28px;padding:16px;background:rgba(201,168,76,.06);border:1px solid rgba(201,168,76,.18)}
 .elegivel-price strong{color:#C9A84C}

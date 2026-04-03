@@ -7,74 +7,68 @@ interface LeadInput {
   whatsapp: string;
   faturamento: string;
   equipe: string;
-  anosExperiencia: string;
+  urgencia: string;
   investimento: string;
   dores: string[];
 }
 
 function calcQualification(data: LeadInput): {
   qualified: boolean;
+  tier: "hot" | "warm" | "cold";
   internalScore: number;
   topPercent: number;
 } {
   let score = 0;
 
-  // Faturamento
-  if (
-    data.faturamento === "R$100k-500k" ||
-    data.faturamento === "Acima de R$500k"
-  ) {
-    score += 35;
-  } else if (data.faturamento === "R$50k-100k") {
-    score += 35;
-  } else if (data.faturamento === "R$30k-50k") {
-    score += 30;
-  } else if (data.faturamento === "R$10k-30k") {
-    score += 20;
-  }
+  // Faturamento (até 30pts) — maior peso
+  const fat = data.faturamento;
+  if (fat === "R$1 milhão a R$5 milhões") score += 30;
+  else if (fat === "R$500 mil a R$1 milhão") score += 28;
+  else if (fat === "R$100 mil a R$500 mil") score += 25;
+  else if (fat === "R$50 mil a R$100 mil") score += 20;
+  else if (fat === "R$10 mil a R$50 mil") score += 12;
+  else if (fat === "Até R$10 mil") score += 5;
 
-  // Investimento
-  if (
-    data.investimento === "R$5k-15k" ||
-    data.investimento === "Acima de R$15k"
-  ) {
-    score += 30;
-  } else if (data.investimento === "R$2k-5k") {
-    score += 20;
-  } else if (data.investimento === "Ate R$2k") {
-    score += 10;
-  }
+  // Investimento (até 25pts)
+  const inv = data.investimento;
+  if (inv === "Acima de R$30 mil") score += 25;
+  else if (inv === "R$15 mil a R$30 mil") score += 22;
+  else if (inv === "R$5 mil a R$15 mil") score += 18;
+  else if (inv === "R$2 mil a R$5 mil") score += 10;
+  else if (inv === "Até R$2 mil") score += 4;
 
-  // Anos experiencia
-  const anos = parseInt(data.anosExperiencia) || 0;
-  if (anos >= 10) score += 15;
-  else if (anos >= 5) score += 10;
-  else if (anos >= 2) score += 5;
+  // Urgência (até 25pts) — novo campo, alto peso
+  const urg = data.urgencia;
+  if (urg === "Preciso resolver isso agora") score += 25;
+  else if (urg === "Nos próximos 3 meses") score += 18;
+  else if (urg === "Estou planejando para este ano") score += 8;
+  else if (urg === "Só estou explorando por enquanto") score += 2;
 
-  // Equipe
-  if (
-    data.equipe === "2-5" ||
-    data.equipe === "6-15" ||
-    data.equipe === "Mais de 15"
-  ) {
-    score += 10;
-  }
+  // Equipe (até 10pts)
+  if (data.equipe === "Mais de 15") score += 10;
+  else if (data.equipe === "6-15") score += 10;
+  else if (data.equipe === "2-5") score += 7;
 
-  // Dores de alto valor
+  // Dores de alto valor (até 10pts)
   if (data.dores.includes("Dependo demais da minha presenca")) score += 5;
   if (data.dores.includes("Bati num teto de faturamento")) score += 5;
 
-  const qualified = score >= 50;
+  // 3 tiers: hot (70+), warm (40-69), cold (<40)
+  let tier: "hot" | "warm" | "cold";
+  if (score >= 70) tier = "hot";
+  else if (score >= 40) tier = "warm";
+  else tier = "cold";
+
+  const qualified = tier === "hot" || tier === "warm";
 
   let topPercent: number;
-  if (score >= 80) topPercent = 5;
+  if (score >= 85) topPercent = 3;
   else if (score >= 70) topPercent = 8;
-  else if (score >= 60) topPercent = 12;
-  else if (score >= 50) topPercent = 18;
+  else if (score >= 55) topPercent = 15;
   else if (score >= 40) topPercent = 25;
-  else topPercent = 35;
+  else topPercent = 40;
 
-  return { qualified, internalScore: score, topPercent };
+  return { qualified, tier, internalScore: score, topPercent };
 }
 
 export async function POST(request: NextRequest) {
@@ -98,10 +92,11 @@ export async function POST(request: NextRequest) {
       whatsapp: data.whatsapp,
       faturamento: data.faturamento,
       equipe: data.equipe,
-      anos_experiencia: data.anosExperiencia,
+      urgencia: data.urgencia,
       investimento: data.investimento,
       dores: data.dores,
       qualified: result.qualified,
+      tier: result.tier,
       internal_score: result.internalScore,
       top_percent: result.topPercent,
     }) : { error: null };

@@ -40,21 +40,30 @@ const DRILL_STEPS = [
 ];
 
 const FATURAMENTO_OPTIONS = [
-  "Até R$10k",
-  "R$10k-30k",
-  "R$30k-50k",
-  "R$50k-100k",
-  "R$100k-500k",
-  "Acima de R$500k",
+  "Até R$10 mil",
+  "R$10 mil a R$50 mil",
+  "R$50 mil a R$100 mil",
+  "R$100 mil a R$500 mil",
+  "R$500 mil a R$1 milhão",
+  "R$1 milhão a R$5 milhões",
+  "Outros",
 ];
 
 const EQUIPE_OPTIONS = ["Só eu", "2-5", "6-15", "Mais de 15"];
 
 const INVESTIMENTO_OPTIONS = [
-  "Ate R$2k",
-  "R$2k-5k",
-  "R$5k-15k",
-  "Acima de R$15k",
+  "Até R$2 mil",
+  "R$2 mil a R$5 mil",
+  "R$5 mil a R$15 mil",
+  "R$15 mil a R$30 mil",
+  "Acima de R$30 mil",
+];
+
+const URGENCIA_OPTIONS = [
+  "Preciso resolver isso agora",
+  "Nos próximos 3 meses",
+  "Estou planejando para este ano",
+  "Só estou explorando por enquanto",
 ];
 
 // ─── UTILS ───────────────────────────────────────────────────────────────────
@@ -216,7 +225,7 @@ export default function Calculator() {
     whatsapp: "",
     faturamento: "",
     equipe: "",
-    anosExperiencia: "",
+    urgencia: "",
     investimento: "",
   });
   const [diagnoseResult, setDiagnoseResult] = useState<DiagnoseResult | null>(null);
@@ -403,7 +412,7 @@ export default function Calculator() {
           whatsapp: data.whatsapp,
           faturamento: data.faturamento,
           equipe: data.equipe,
-          anosExperiencia: data.anosExperiencia,
+          urgencia: data.urgencia,
           investimento: data.investimento,
           dores: data.dores,
         }),
@@ -987,16 +996,19 @@ export default function Calculator() {
 
               <div className="row2 mb16">
                 <div className="f" style={{ marginBottom: 0 }}>
-                  <label>Anos de experiência</label>
-                  <input
-                    type="number"
-                    placeholder="Ex: 8"
-                    value={data.anosExperiencia}
-                    onChange={(e) => set("anosExperiencia", e.target.value)}
-                  />
+                  <label>Qual seu nível de urgência?</label>
+                  <select
+                    value={data.urgencia}
+                    onChange={(e) => set("urgencia", e.target.value)}
+                  >
+                    <option value="">Selecione...</option>
+                    {URGENCIA_OPTIONS.map((o) => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="f" style={{ marginBottom: 0 }}>
-                  <label>Quanto pode investir no crescimento?</label>
+                  <label>Quanto investiria para crescer?</label>
                   <select
                     value={data.investimento}
                     onChange={(e) => set("investimento", e.target.value)}
@@ -1131,13 +1143,34 @@ export default function Calculator() {
 
           {/* ════════ STEP 9: FINAL (split by lead quality) ════════ */}
           {step === 9 && diagnoseResult && (() => {
-            const isQualified = leadResult?.qualified !== false;
+            const tier = leadResult?.tier || "warm";
+            const isHot = tier === "hot";
+            const isCold = tier === "cold";
 
             return (
               <div className="elegivel-section step-content">
                 <BackButton onClick={goBack} />
 
-                {isQualified ? (
+                {/* Scores block — shared by all tiers */}
+                <div className="final-scores">
+                  <div className="final-score-atual">
+                    <div className="final-score-label">Score Atual</div>
+                    <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
+                  </div>
+                  <div className="final-score-arrow">→</div>
+                  <div className="final-score-vis">
+                    <div className="final-score-label">Score Visionário</div>
+                    <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
+                  </div>
+                </div>
+
+                <div className="final-riqueza">
+                  <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
+                  <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
+                </div>
+
+                {/* HOT: sessão gratuita */}
+                {isHot && (
                   <>
                     <div className="step-title">{data.nome}, posso te fazer uma proposta?</div>
                     <div className="elegivel-minority">
@@ -1157,23 +1190,6 @@ export default function Calculator() {
                       Essa sessão custa <strong>R$1 mil</strong>. Mas pelo seu perfil, você está elegível para receber uma <strong>sem custo nenhum</strong> — porque estamos selecionando cases para nosso próximo estudo de mercado.
                     </div>
 
-                    <div className="final-scores">
-                      <div className="final-score-atual">
-                        <div className="final-score-label">Score Atual</div>
-                        <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
-                      </div>
-                      <div className="final-score-arrow">→</div>
-                      <div className="final-score-vis">
-                        <div className="final-score-label">Score Visionário</div>
-                        <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
-                      </div>
-                    </div>
-
-                    <div className="final-riqueza">
-                      <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
-                      <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
-                    </div>
-
                     <a
                       href={CONSULTORIA_URL}
                       target="_blank"
@@ -1189,28 +1205,56 @@ export default function Calculator() {
                       Vagas limitadas. Apenas {leadResult?.topPercent || 8}% dos perfis analisados recebem essa oferta.
                     </div>
                   </>
-                ) : (
+                )}
+
+                {/* WARM: sessão com valor reduzido */}
+                {!isHot && !isCold && (
+                  <>
+                    <div className="step-title">{data.nome}, você tem potencial</div>
+                    <div className="elegivel-minority">
+                      O Método V.I.S.O.R. identificou oportunidades reais no seu mercado. Com a orientação certa, você pode destravar esse crescimento mais rápido.
+                    </div>
+
+                    <div className="elegivel-badge warm-badge">
+                      <div className="elegivel-badge-icon">→</div>
+                      <div className="elegivel-badge-text">PRÓXIMO PASSO DISPONÍVEL</div>
+                    </div>
+
+                    <div className="elegivel-desc">
+                      Oferecemos sessões estratégicas de 40 minutos com um especialista em diferenciação para te mostrar como atacar essas oportunidades. Normalmente custa R$1 mil.
+                    </div>
+
+                    <div className="elegivel-price">
+                      Pelo seu perfil, liberamos uma condição especial: <strong>sessão por R$297</strong> (valor promocional para perfis selecionados pela calculadora).
+                    </div>
+
+                    <a
+                      href={CONSULTORIA_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ textDecoration: "none", display: "block", width: "100%" }}
+                    >
+                      <button className="btn-gold">
+                        QUERO MINHA SESSÃO ESTRATÉGICA
+                      </button>
+                    </a>
+
+                    <button
+                      className="btn-sec"
+                      style={{ width: "100%", marginTop: 10 }}
+                      onClick={() => window.print()}
+                    >
+                      SALVAR MEU PLANO (PDF)
+                    </button>
+                  </>
+                )}
+
+                {/* COLD: plano completo + PDF */}
+                {isCold && (
                   <>
                     <div className="step-title">{data.nome}, seu plano está pronto</div>
                     <div className="nurture-intro">
-                      O Método V.I.S.O.R. mapeou oportunidades reais no seu mercado. Seu próximo passo é revisar o plano com calma e começar a implementar.
-                    </div>
-
-                    <div className="final-scores">
-                      <div className="final-score-atual">
-                        <div className="final-score-label">Score Atual</div>
-                        <div className="final-score-num" style={{color: "var(--orange)"}}>{diagnoseResult.scores.score_atual}</div>
-                      </div>
-                      <div className="final-score-arrow">→</div>
-                      <div className="final-score-vis">
-                        <div className="final-score-label">Score Visionário</div>
-                        <div className="final-score-num-big" style={{color: "var(--green)"}}>{diagnoseResult.scores.score_visionario}</div>
-                      </div>
-                    </div>
-
-                    <div className="final-riqueza">
-                      <div className="final-riqueza-label">RIQUEZA A DESBLOQUEAR</div>
-                      <div className="final-riqueza-val">{fmt(diagnoseResult.scores.riqueza_total)}</div>
+                      O Método V.I.S.O.R. mapeou oportunidades reais no seu mercado. Revise o plano, comece a implementar, e quando estiver pronto para acelerar — estaremos aqui.
                     </div>
 
                     <div className="nurture-ideas">
@@ -1247,7 +1291,7 @@ export default function Calculator() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        Saiba mais sobre nossa consultoria
+                        Conheça nossa consultoria
                       </a>
                     </div>
                   </>

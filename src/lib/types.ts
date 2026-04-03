@@ -15,7 +15,7 @@ export interface WizardData {
   whatsapp: string;
   faturamento: string;
   equipe: string;
-  anosExperiencia: string;
+  urgencia: string;
   investimento: string;
 }
 
@@ -72,6 +72,7 @@ export interface DiagnoseResult {
 // Lead qualification result (Step 9)
 export interface LeadResult {
   qualified: boolean;
+  tier: "hot" | "warm" | "cold";
   internalScore: number;
   topPercent: number; // e.g. 8 = top 8%
 }
