@@ -475,13 +475,13 @@ export default function Calculator() {
                 <img className="landing-author-img" src="https://pedrosuperti.com.br/wp-content/uploads/2024/01/pedro-superti-perfil.webp" alt="Pedro Superti" />
                 <div className="landing-author-info">
                   <div className="landing-author-name">Pedro Superti</div>
-                  <div className="landing-author-role">Criador do Método VISOR</div>
+                  <div className="landing-author-role">Criador do Método V.I.S.O.R.</div>
                 </div>
               </div>
 
               <div className="landing-title">QUANTA RIQUEZA ESTÁ ESCONDIDA NO SEU NEGÓCIO?</div>
               <div className="landing-subtitle">
-                Nosso método exclusivo VISOR encontra oportunidades milionárias escondidas dentro do seu mercado
+                Nosso método exclusivo V.I.S.O.R. encontra oportunidades milionárias escondidas dentro do seu mercado
               </div>
 
               <div className="comparison-context">
@@ -1120,9 +1120,9 @@ export default function Calculator() {
             <div className="elegivel-section step-content">
               <BackButton onClick={goBack} />
 
-              <div className="step-title">Posso ajudar você?</div>
+              <div className="step-title">{data.nome}, posso te fazer uma proposta?</div>
               <div className="elegivel-minority">
-                Se você está vendo esta mensagem, você faz parte de uma minoria que meu sistema identificou como um negócio com potencial visionário real.
+                O Método V.I.S.O.R. identificou seu negócio como um dos poucos com potencial visionário real. Você faz parte de uma minoria.
               </div>
 
               <div className="elegivel-badge">
@@ -1131,11 +1131,11 @@ export default function Calculator() {
               </div>
 
               <div className="elegivel-desc">
-                Seu negócio está elegível para uma sessão estratégica de 40 minutos onde eu pessoalmente vou te mostrar como desbloquear a riqueza que a IA identificou no seu mercado.
+                Seu negócio está elegível para uma sessão estratégica de 40 minutos onde um especialista em diferenciação da minha equipe vai te mostrar exatamente quais dessas oportunidades atacar primeiro e como implementar nos próximos 90 dias.
               </div>
 
               <div className="elegivel-price">
-                Essa sessão custa <strong>R$1 mil</strong>. Mas pelo seu perfil, você está elegível para receber uma <strong>sem custo nenhum</strong>.
+                Essa sessão custa <strong>R$1 mil</strong>. Mas pelo seu perfil, você está elegível para receber uma <strong>sem custo nenhum</strong> — porque estamos selecionando cases para nosso próximo estudo de mercado.
               </div>
 
               {/* Quick recap: scores + riqueza */}
