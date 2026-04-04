@@ -303,6 +303,12 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const res = await fetch("/api/admin/leads", { headers: authHeaders() });
+      if (res.status === 401) {
+        // Token is stale or invalid — force re-login
+        sessionStorage.removeItem("adm_token");
+        setAuthed(false);
+        return;
+      }
       if (res.ok) {
         const raw: Lead[] = await res.json();
         // Fix tier from score (in case DB has stale tier)
@@ -339,6 +345,7 @@ export default function AdminDashboard() {
   const fetchCalcAnalytics = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/analytics", { headers: authHeaders() });
+      if (res.status === 401) { sessionStorage.removeItem("adm_token"); setAuthed(false); return; }
       if (res.ok) setCalcEvents(await res.json());
     } catch (e) { console.error("Calc analytics fetch:", e); }
   }, []);
