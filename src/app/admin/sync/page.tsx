@@ -89,7 +89,7 @@ function parseCSV(text: string): ParsedSubmission[] {
     let createdAt = "";
     let submissionId = "";
     for (let j = 0; j < headers.length; j++) {
-      const h = headers[j].toLowerCase();
+      const h = (headers[j] || "").toLowerCase();
       const v = cols[j] || "";
       if (h.includes("data") && h.includes("envio")) {
         createdAt = v;
@@ -116,7 +116,7 @@ const KNOWN_LABELS = [
 ];
 
 function isKnownLabel(line: string): boolean {
-  const lower = line.toLowerCase().replace(/:$/, "").trim();
+  const lower = (line || "").toLowerCase().replace(/:$/, "").trim();
   return KNOWN_LABELS.some((l) => lower.includes(l));
 }
 
@@ -210,11 +210,14 @@ function parseJSON(text: string): ParsedSubmission[] {
   const parsed = JSON.parse(text);
   const arr = Array.isArray(parsed) ? parsed : [parsed];
   return arr.map((item) => {
-    if (item.answers && Array.isArray(item.answers)) return item;
+    if (item.answers && Array.isArray(item.answers)) {
+      return { ...item, answers: item.answers.map((a: Record<string, unknown>) => ({ title: String(a.title ?? a.question ?? a.label ?? ""), value: String(a.value ?? a.answer ?? a.response ?? "") })) };
+    }
     // Wrap raw object as a submission
     const answers: { title: string; value: string }[] = [];
     for (const [k, v] of Object.entries(item)) {
-      if (v && typeof v === "string") answers.push({ title: k, value: v });
+      if (v != null && typeof v === "string") answers.push({ title: k, value: v });
+      else if (v != null && typeof v !== "object") answers.push({ title: k, value: String(v) });
     }
     return { answers, createdAt: item.createdAt || item.created_at };
   });
@@ -439,10 +442,10 @@ export default function SyncPage() {
   // Get name + phone from parsed submission for preview
   function getPreview(sub: ParsedSubmission): { name: string; phone: string } {
     const nameField = sub.answers?.find((a) =>
-      a.title.toLowerCase().includes("nome") && !a.title.toLowerCase().includes("empresa")
+      (a.title || "").toLowerCase().includes("nome") && !(a.title || "").toLowerCase().includes("empresa")
     );
     const phoneField = sub.answers?.find((a) =>
-      a.title.toLowerCase().includes("telefone") || a.title.toLowerCase().includes("whatsapp")
+      (a.title || "").toLowerCase().includes("telefone") || (a.title || "").toLowerCase().includes("whatsapp")
     );
     return {
       name: nameField?.value || sub.answers?.[0]?.value || "—",

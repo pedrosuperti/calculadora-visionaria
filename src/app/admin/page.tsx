@@ -170,6 +170,9 @@ function tierOrder(tier: string): number {
 interface SmartTag { label: string; emoji: string; color: string }
 
 function computeTags(lead: Lead): SmartTag[] {
+  try { return _computeTags(lead); } catch (e) { console.error("computeTags error:", e, lead.id); return []; }
+}
+function _computeTags(lead: Lead): SmartTag[] {
   const tags: SmartTag[] = [];
   const urg = (lead.urgencia || "").toLowerCase();
   if (urg.includes("urgente") || urg.includes("ontem") || urg.includes("alto") || urg.includes("semana")) {
@@ -1596,7 +1599,7 @@ const KNOWN_LABELS = [
 ];
 
 function isKnownLabel(line: string): boolean {
-  const lower = line.toLowerCase().replace(/:$/, "").trim();
+  const lower = (line || "").toLowerCase().replace(/:$/, "").trim();
   return KNOWN_LABELS.some((l) => lower.includes(l));
 }
 
@@ -1647,7 +1650,7 @@ function parseCSVSync(text: string): ParsedSubmission[] {
     const answers: { title: string; value: string }[] = [];
     let createdAt = "", submissionId = "";
     for (let j = 0; j < headers.length; j++) {
-      const h = headers[j].toLowerCase(), v = cols[j] || "";
+      const h = (headers[j] || "").toLowerCase(), v = cols[j] || "";
       if (h.includes("data") && h.includes("envio")) createdAt = v;
       else if (h.includes("id") && h.includes("envio")) submissionId = v;
       else if (v) answers.push({ title: headers[j], value: v });
