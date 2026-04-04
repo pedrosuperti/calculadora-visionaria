@@ -4,10 +4,10 @@ let _supabase: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient | null {
   if (_supabase) return _supabase;
-  const url = process.env.SUPABASE_URL || "https://bxohbhrrdxuahbwllqqf.supabase.co";
+  const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_KEY;
-  if (!key) {
-    console.warn("SUPABASE_SERVICE_KEY not set, leads will not be saved");
+  if (!url || !key) {
+    console.warn("SUPABASE_URL or SUPABASE_SERVICE_KEY not set, database unavailable");
     return null;
   }
   _supabase = createClient(url, key);

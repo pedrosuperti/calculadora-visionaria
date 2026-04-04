@@ -236,18 +236,30 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
-// ─── ADMIN PASSWORD ─────────────────────────────────────────────────────────
+// ─── AUTH HELPERS ───────────────────────────────────────────────────────────
 
-const ADMIN_PASS = "visor2026";
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem("adm_token") || "";
+}
+
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  return { "Authorization": `Bearer ${getAuthToken()}`, ...extra };
+}
+
+function authJsonHeaders(): Record<string, string> {
+  return authHeaders({ "Content-Type": "application/json" });
+}
 
 // ─── COMPONENT ──────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
   const [authed, setAuthed] = useState(() => {
-    if (typeof window !== "undefined") return sessionStorage.getItem("adm_auth") === "1";
+    if (typeof window !== "undefined") return !!sessionStorage.getItem("adm_token");
     return false;
   });
   const [pass, setPass] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState<"all" | "hot" | "warm" | "cold">("all");
@@ -262,7 +274,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/insights", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authJsonHeaders(),
         body: JSON.stringify({
           nome: lead.nome,
           mercado: lead.mercado,
@@ -290,7 +302,7 @@ export default function AdminDashboard() {
   const fetchLeads = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/leads");
+      const res = await fetch("/api/admin/leads", { headers: authHeaders() });
       if (res.ok) {
         const raw: Lead[] = await res.json();
         // Fix tier from score (in case DB has stale tier)
@@ -326,7 +338,7 @@ export default function AdminDashboard() {
 
   const fetchCalcAnalytics = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/analytics");
+      const res = await fetch("/api/admin/analytics", { headers: authHeaders() });
       if (res.ok) setCalcEvents(await res.json());
     } catch (e) { console.error("Calc analytics fetch:", e); }
   }, []);
@@ -714,7 +726,7 @@ export default function AdminDashboard() {
   const updateLead = async (id: number, data: { contact_status?: string; notes?: string }) => {
     await fetch("/api/admin/leads/update", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authJsonHeaders(),
       body: JSON.stringify({ id, ...data }),
     });
     setLeads((prev) =>
@@ -723,6 +735,26 @@ export default function AdminDashboard() {
   };
 
   // ─── LOGIN ────────────────────────────────────────────────────────────────
+
+  const handleLogin = async () => {
+    setLoginError("");
+    try {
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pass }),
+      });
+      if (res.ok) {
+        const { token } = await res.json();
+        sessionStorage.setItem("adm_token", token);
+        setAuthed(true);
+      } else {
+        setLoginError("Senha incorreta");
+      }
+    } catch {
+      setLoginError("Erro de conexao");
+    }
+  };
 
   if (!authed) {
     return (
@@ -735,9 +767,10 @@ export default function AdminDashboard() {
             placeholder="Senha de acesso"
             value={pass}
             onChange={(e) => setPass(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter" && pass === ADMIN_PASS) { sessionStorage.setItem("adm_auth", "1"); setAuthed(true); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") handleLogin(); }}
           />
-          <button onClick={() => { if (pass === ADMIN_PASS) { sessionStorage.setItem("adm_auth", "1"); setAuthed(true); } }}>ENTRAR</button>
+          <button onClick={handleLogin}>ENTRAR</button>
+          {loginError && <p style={{ color: "#EF4444", fontSize: 13, marginTop: 10 }}>{loginError}</p>}
         </div>
       </div>
     );
@@ -767,12 +800,15 @@ export default function AdminDashboard() {
           </div>
         </nav>
         <div className="adm-side-actions">
-          <a href="/api/admin/leads/export" className="adm-nav" download>Exportar CSV</a>
+          <button className="adm-nav" onClick={async () => {
+            const res = await fetch("/api/admin/leads/export", { headers: authHeaders() });
+            if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `leads-visor-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }
+          }}>Exportar CSV</button>
           <button className={`adm-nav${page === "sync" ? " active" : ""}`} onClick={() => { setPage("sync"); setSideOpen(false); }}>Sync Forms.app</button>
           <button className="adm-nav" onClick={fetchLeads} disabled={loading}>{loading ? "..." : "Atualizar"}</button>
         </div>
         <div className="adm-side-foot">
-          <button className="adm-nav logout" onClick={() => { sessionStorage.removeItem("adm_auth"); setAuthed(false); }}>Sair</button>
+          <button className="adm-nav logout" onClick={() => { sessionStorage.removeItem("adm_token"); setAuthed(false); }}>Sair</button>
         </div>
       </aside>
 
@@ -1419,7 +1455,7 @@ export default function AdminDashboard() {
                       onClick={async () => {
                         const updated = leads.map((l) => l.id === dl.id ? { ...l, contact_status: s } : l);
                         setLeads(updated);
-                        await fetch("/api/admin/leads/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: dl.id, contact_status: s }) });
+                        await fetch("/api/admin/leads/update", { method: "POST", headers: authJsonHeaders(), body: JSON.stringify({ id: dl.id, contact_status: s }) });
                       }}
                     >
                       {CONTACT_LABELS[s]}
@@ -1437,7 +1473,7 @@ export default function AdminDashboard() {
                   placeholder="Ex: Vai agendar semana que vem..."
                   value={dl.notes || ""}
                   onChange={(e) => { const v = e.target.value; setLeads((prev) => prev.map((l) => l.id === dl.id ? { ...l, notes: v } : l)); }}
-                  onBlur={() => fetch("/api/admin/leads/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: dl.id, notes: dl.notes || "" }) })}
+                  onBlur={() => fetch("/api/admin/leads/update", { method: "POST", headers: authJsonHeaders(), body: JSON.stringify({ id: dl.id, notes: dl.notes || "" }) })}
                 />
               </div>
 
@@ -1704,7 +1740,7 @@ function SyncSection() {
   const runSetup = async () => {
     setSetupLoading(true); setSetupSql("");
     try {
-      const res = await fetch("/api/admin/formsapp-setup", { method: "POST" });
+      const res = await fetch("/api/admin/formsapp-setup", { method: "POST", headers: authHeaders() });
       const data = await res.json();
       if (data.sql) setSetupSql(data.sql); else setSetupDone(true);
     } catch { setSetupSql("Erro ao criar tabela."); }
@@ -1713,7 +1749,7 @@ function SyncSection() {
 
   const fetchUnmatched = async () => {
     try {
-      const res = await fetch("/api/admin/formsapp-unmatched");
+      const res = await fetch("/api/admin/formsapp-unmatched", { headers: authHeaders() });
       if (res.ok) { const data = await res.json(); setUnmatched(data.unmatched || []); setSyncLeads(data.leads || []); }
     } catch (e) { console.error("Fetch unmatched:", e); }
   };
@@ -1742,7 +1778,7 @@ function SyncSection() {
     if (parsed.length === 0) return;
     setImporting(true); setImportResult(null);
     try {
-      const res = await fetch("/api/admin/formsapp-import", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ submissions: parsed }) });
+      const res = await fetch("/api/admin/formsapp-import", { method: "POST", headers: authJsonHeaders(), body: JSON.stringify({ submissions: parsed }) });
       const data = await res.json();
       if (data.error) alert("Erro: " + data.error); else setImportResult(data);
       fetchUnmatched();
@@ -1753,7 +1789,7 @@ function SyncSection() {
   const handleSync = async () => {
     setSyncing(true); setSyncResult(null);
     try {
-      const res = await fetch("/api/admin/formsapp-sync", { method: "POST" });
+      const res = await fetch("/api/admin/formsapp-sync", { method: "POST", headers: authHeaders() });
       const data = await res.json();
       if (data.error) alert("Erro: " + data.error); else setSyncResult(data);
       fetchUnmatched();
@@ -1764,7 +1800,7 @@ function SyncSection() {
   const handleManualLink = async (unmatchedId: number, leadId: number) => {
     setLinking(unmatchedId);
     try {
-      const res = await fetch("/api/admin/formsapp-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ unmatched_id: unmatchedId, lead_id: leadId }) });
+      const res = await fetch("/api/admin/formsapp-link", { method: "POST", headers: authJsonHeaders(), body: JSON.stringify({ unmatched_id: unmatchedId, lead_id: leadId }) });
       if (res.ok) fetchUnmatched();
     } catch (e) { console.error("Link error:", e); }
     finally { setLinking(null); }

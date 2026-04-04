@@ -1,8 +1,10 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
 
 // Creates the formsapp_unmatched table if it doesn't exist
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
     const supabase = getSupabase();
     if (!supabase) return NextResponse.json({ error: "DB not configured" }, { status: 503 });

@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
     const supabase = getSupabase();
     if (!supabase) {

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
 
 const anthropic = new Anthropic();
 
@@ -71,6 +72,7 @@ REGRAS:
 }
 
 export async function POST(request: NextRequest) {
+  if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
