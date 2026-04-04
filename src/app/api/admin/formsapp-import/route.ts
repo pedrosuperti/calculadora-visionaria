@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
 
 function normalizeStr(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
@@ -51,6 +52,7 @@ function matchName(formNames: string[], leadNome: string): boolean {
 // POST: Import array of Forms.app submissions
 // Body: { submissions: [ { ...payload }, ... ] }
 export async function POST(request: NextRequest) {
+  if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
     const { submissions } = await request.json();
     if (!Array.isArray(submissions) || submissions.length === 0) {

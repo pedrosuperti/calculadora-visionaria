@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
 
 function normalizeStr(s: string): string {
   return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
@@ -32,7 +33,8 @@ function matchName(formNames: string[], leadNome: string): boolean {
   return false;
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
     const supabase = getSupabase();
     if (!supabase) return NextResponse.json({ error: "DB not configured" }, { status: 503 });

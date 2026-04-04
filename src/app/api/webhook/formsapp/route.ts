@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 
-const WEBHOOK_SECRET = process.env.FORMSAPP_WEBHOOK_SECRET || "";
+const WEBHOOK_SECRET = process.env.FORMSAPP_WEBHOOK_SECRET;
 
 // ─── MATCHING UTILS ──────────────────────────────────────────────────────
 
@@ -95,12 +95,13 @@ function extractNameCandidates(values: string[]): string[] {
 
 export async function POST(request: NextRequest) {
   try {
-    if (WEBHOOK_SECRET) {
-      const authHeader = request.headers.get("authorization") || "";
-      const secretParam = request.nextUrl.searchParams.get("secret") || "";
-      if (authHeader !== WEBHOOK_SECRET && secretParam !== WEBHOOK_SECRET) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (!WEBHOOK_SECRET) {
+      console.error("FORMSAPP_WEBHOOK_SECRET not configured — rejecting webhook");
+      return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
+    }
+    const authHeader = request.headers.get("authorization") || "";
+    if (authHeader !== WEBHOOK_SECRET && authHeader !== `Bearer ${WEBHOOK_SECRET}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const payload = await request.json();
