@@ -138,7 +138,7 @@ function parseFormsAppData(data: Record<string, unknown> | null): { question: st
     for (const a of answers) {
       if (a && typeof a === "object") {
         const obj = a as Record<string, unknown>;
-        const q = String(obj.title || obj.question || obj.label || obj.field || "");
+        const q = String(obj.title ?? obj.question ?? obj.label ?? obj.field ?? "");
         let v = obj.value ?? obj.answer ?? obj.response ?? "";
         if (Array.isArray(v)) v = v.join(", ");
         if (typeof v === "object" && v !== null) v = JSON.stringify(v);
@@ -182,12 +182,12 @@ function computeTags(lead: Lead): SmartTag[] {
   }
   // Motivado: many pain points or detailed challenges
   const formsAnswers = lead.formsapp_data ? parseFormsAppData(lead.formsapp_data) : [];
-  const desafiosText = formsAnswers.find((a) => a.question.toLowerCase().includes("desafio"))?.answer || "";
+  const desafiosText = formsAnswers.find((a) => (a.question || "").toLowerCase().includes("desafio"))?.answer || "";
   if ((lead.dores?.length || 0) >= 3 || desafiosText.length > 100) {
     tags.push({ label: "MOTIVADO", emoji: "💪", color: "#F97316" });
   }
   // Usa IA
-  const iaText = formsAnswers.find((a) => a.question.toLowerCase().includes("ia"))?.answer?.toLowerCase() || "";
+  const iaText = formsAnswers.find((a) => (a.question || "").toLowerCase().includes("ia"))?.answer?.toLowerCase() || "";
   const iaInactive = ["nada", "zero", "pouco", "muito pouco", "nada praticamente", "não", "nao", "1", "5%"];
   if (iaText && !iaInactive.some((w) => iaText === w || iaText.startsWith(w + "."))) {
     tags.push({ label: "USA IA", emoji: "🤖", color: "#A855F7" });
@@ -200,7 +200,7 @@ function computeTags(lead: Lead): SmartTag[] {
     tags.push({ label: "SOLO", emoji: "🧍", color: "#6B7280" });
   }
   // Sem marketing
-  const mktText = formsAnswers.find((a) => a.question.toLowerCase().includes("marketing"))?.answer?.toLowerCase() || "";
+  const mktText = formsAnswers.find((a) => (a.question || "").toLowerCase().includes("marketing"))?.answer?.toLowerCase() || "";
   if (mktText && (mktText.includes("nada") || mktText.includes("zero") || mktText.includes("quase não") || mktText.includes("não faço"))) {
     tags.push({ label: "SEM MKT", emoji: "📢", color: "#EAB308" });
   }
@@ -1704,9 +1704,12 @@ function detectAndParseSync(text: string): { submissions: ParsedSubmission[]; fo
       const parsed = JSON.parse(trimmed);
       const arr = Array.isArray(parsed) ? parsed : [parsed];
       const subs = arr.map((item: Record<string, unknown>) => {
-        if (item.answers && Array.isArray(item.answers)) return item as ParsedSubmission;
+        if (item.answers && Array.isArray(item.answers)) {
+          const safe = { ...item, answers: (item.answers as Record<string, unknown>[]).map((a) => ({ title: String(a.title ?? a.question ?? a.label ?? ""), value: String(a.value ?? a.answer ?? a.response ?? "") })) } as ParsedSubmission;
+          return safe;
+        }
         const answers: { title: string; value: string }[] = [];
-        for (const [k, v] of Object.entries(item)) { if (v && typeof v === "string") answers.push({ title: k, value: v }); }
+        for (const [k, v] of Object.entries(item)) { if (v != null && typeof v === "string") answers.push({ title: k, value: v }); else if (v != null && typeof v !== "object") answers.push({ title: k, value: String(v) }); }
         return { answers, createdAt: (item.createdAt || item.created_at || "") as string };
       });
       return { submissions: subs, format: "JSON" };
@@ -1816,8 +1819,8 @@ function SyncSection() {
   const availableLeads = syncLeads.filter((l) => !l.formsapp_completed);
 
   function getPreview(sub: ParsedSubmission): { name: string; phone: string } {
-    const nameField = sub.answers?.find((a) => a.title.toLowerCase().includes("nome") && !a.title.toLowerCase().includes("empresa"));
-    const phoneField = sub.answers?.find((a) => a.title.toLowerCase().includes("telefone") || a.title.toLowerCase().includes("whatsapp"));
+    const nameField = sub.answers?.find((a) => (a.title || "").toLowerCase().includes("nome") && !(a.title || "").toLowerCase().includes("empresa"));
+    const phoneField = sub.answers?.find((a) => (a.title || "").toLowerCase().includes("telefone") || (a.title || "").toLowerCase().includes("whatsapp"));
     return { name: nameField?.value || sub.answers?.[0]?.value || "—", phone: phoneField?.value || "—" };
   }
 
