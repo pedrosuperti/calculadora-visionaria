@@ -254,6 +254,18 @@ export default function PublicFichaPage() {
           </section>
         )}
 
+        {/* ─── DEBUG: Raw formsapp_data (temporary) ─── */}
+        {lead.formsapp_data && (
+          <section className="adm-ficha-section">
+            <details>
+              <summary style={{ cursor: "pointer", color: "rgba(226,221,212,.3)", fontSize: 12 }}>DEBUG: Raw formsapp_data</summary>
+              <pre style={{ fontSize: 10, color: "rgba(226,221,212,.4)", whiteSpace: "pre-wrap", wordBreak: "break-all", marginTop: 8, maxHeight: 400, overflow: "auto", background: "rgba(0,0,0,.3)", padding: 12, borderRadius: 4 }}>
+                {JSON.stringify(lead.formsapp_data, null, 2)}
+              </pre>
+            </details>
+          </section>
+        )}
+
         {/* ─── WHATSAPP ACTION ─── */}
         <section className="adm-ficha-actions">
           <a
