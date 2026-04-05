@@ -1840,6 +1840,32 @@ function SyncSection() {
   const [linking, setLinking] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [auditing, setAuditing] = useState(false);
+  const [auditResult, setAuditResult] = useState<{ total_with_formsapp: number; potential_mismatches: number; mismatches: { lead_id: number; lead_name: string; lead_whatsapp: string; form_name: string; form_phone: string; form_company: string }[] } | null>(null);
+  const [unlinking, setUnlinking] = useState<number | null>(null);
+
+  const runAudit = async () => {
+    setAuditing(true);
+    try {
+      const res = await fetch("/api/admin/formsapp-audit", { headers: authHeaders() });
+      const data = await res.json();
+      if (data.error) alert("Erro: " + data.error);
+      else setAuditResult(data);
+    } catch (e) { alert("Erro: " + String(e)); }
+    finally { setAuditing(false); }
+  };
+
+  const handleUnlink = async (leadId: number) => {
+    if (!confirm("Desvincular formulario deste lead? Os dados serao salvos para re-vincular.")) return;
+    setUnlinking(leadId);
+    try {
+      const res = await fetch("/api/admin/formsapp-audit", { method: "POST", headers: authJsonHeaders(), body: JSON.stringify({ lead_id: leadId }) });
+      const data = await res.json();
+      if (data.error) alert("Erro: " + data.error);
+      else { alert(data.message); runAudit(); fetchUnmatched(); }
+    } catch (e) { alert("Erro: " + String(e)); }
+    finally { setUnlinking(null); }
+  };
 
   const runSetup = async () => {
     setSetupLoading(true); setSetupSql("");
@@ -1993,7 +2019,47 @@ function SyncSection() {
           </div>
 
           <div className="adm-ficha-section">
-            <h2 className="adm-ficha-section-title">3. Vincular Manualmente ({unmatched.filter((u) => !u.matched).length})</h2>
+            <h2 className="adm-ficha-section-title">3. Auditoria de Matches</h2>
+            <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>Verifica se os formularios foram vinculados aos leads corretos (compara nome do lead vs nome do formulario).</p>
+            <button className="adm-btn-insights" onClick={runAudit} disabled={auditing}>{auditing ? "Verificando..." : "Verificar Matches"}</button>
+            {auditResult && (
+              <div style={{ marginTop: 16, padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 4, fontSize: 13 }}>
+                <p>Total com formulario: <strong>{auditResult.total_with_formsapp}</strong></p>
+                <p style={{ color: auditResult.potential_mismatches > 0 ? "#EF4444" : "#22C55E" }}>
+                  Possiveis erros: <strong>{auditResult.potential_mismatches}</strong>
+                </p>
+                {auditResult.mismatches.length > 0 && (
+                  <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                    {auditResult.mismatches.map((m) => (
+                      <div key={m.lead_id} style={{ padding: 12, background: "rgba(239,68,68,.08)", borderRadius: 4, border: "1px solid rgba(239,68,68,.2)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                          <div>
+                            <div style={{ fontSize: 13 }}>
+                              <strong>Lead #{m.lead_id}:</strong> {m.lead_name} <span style={{ color: "rgba(226,221,212,.4)" }}>({m.lead_whatsapp})</span>
+                            </div>
+                            <div style={{ fontSize: 13, color: "#EF4444", marginTop: 4 }}>
+                              Form: {m.form_name} {m.form_company && <span style={{ color: "rgba(226,221,212,.4)" }}>— {m.form_company}</span>} {m.form_phone && <span style={{ color: "rgba(226,221,212,.4)" }}>({m.form_phone})</span>}
+                            </div>
+                          </div>
+                          <button
+                            className="adm-btn-insights"
+                            style={{ padding: "6px 12px", fontSize: 12, background: "rgba(239,68,68,.2)", borderColor: "rgba(239,68,68,.4)" }}
+                            disabled={unlinking === m.lead_id}
+                            onClick={() => handleUnlink(m.lead_id)}
+                          >
+                            {unlinking === m.lead_id ? "..." : "Desvincular"}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="adm-ficha-section">
+            <h2 className="adm-ficha-section-title">4. Vincular Manualmente ({unmatched.filter((u) => !u.matched).length})</h2>
             {unmatched.filter((u) => !u.matched).length === 0 ? (
               <p style={{ color: "rgba(226,221,212,.3)", fontSize: 14 }}>Tudo vinculado!</p>
             ) : (
