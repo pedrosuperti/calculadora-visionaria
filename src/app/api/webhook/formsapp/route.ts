@@ -6,71 +6,16 @@ const WEBHOOK_SECRET = process.env.FORMSAPP_WEBHOOK_SECRET;
 // ─── MATCHING UTILS ──────────────────────────────────────────────────────
 
 function normalizeStr(s: string): string {
-  return (s || "")
-    .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
-    .replace(/[^a-z0-9\s]/g, "")
-    .trim();
+  return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
 }
 
 function extractPhoneDigits(values: string[]): string {
-  // Strategy 1: Find a single value with 10+ digits (full phone number)
-  const fullPhoneMatch = values.find((v) => {
-    const digits = v.replace(/\D/g, "");
-    return digits.length >= 10;
-  });
+  const fullPhoneMatch = values.find((v) => v.replace(/\D/g, "").length >= 10);
   if (fullPhoneMatch) return fullPhoneMatch.replace(/\D/g, "");
-
-  // Strategy 2: Forms.app splits phone into 3 fields (country, area, number)
-  const numericParts = values
-    .map((v) => v.replace(/\D/g, ""))
-    .filter((d) => d.length >= 1 && d.length <= 6);
+  const numericParts = values.map((v) => v.replace(/\D/g, "")).filter((d) => d.length >= 1 && d.length <= 6);
   const combined = numericParts.join("");
   if (combined.length >= 10) return combined;
-
   return "";
-}
-
-function matchPhone(phoneDigits: string, leadWhatsapp: string): boolean {
-  const leadDigits = (leadWhatsapp || "").replace(/\D/g, "");
-  if (leadDigits.length < 8 || phoneDigits.length < 8) return false;
-
-  // Match by last 8 digits (more tolerant with DDI/DDD variations)
-  const last8Phone = phoneDigits.slice(-8);
-  const last8Lead = leadDigits.slice(-8);
-  if (last8Phone === last8Lead) return true;
-
-  // Also try last 9 (some Brazilian numbers have 9th digit)
-  if (phoneDigits.length >= 9 && leadDigits.length >= 9) {
-    const last9Phone = phoneDigits.slice(-9);
-    const last9Lead = leadDigits.slice(-9);
-    if (last9Phone === last9Lead) return true;
-  }
-
-  return false;
-}
-
-function matchName(formNames: string[], leadNome: string): boolean {
-  const leadNorm = normalizeStr(leadNome);
-  if (leadNorm.length < 2) return false;
-  const leadParts = leadNorm.split(/\s+/);
-
-  for (const name of formNames) {
-    const formNorm = normalizeStr(name);
-    if (formNorm.length < 2) continue;
-    // Exact full name match
-    if (formNorm === leadNorm) return true;
-    // Require first + last name match (not just first name alone)
-    const formParts = formNorm.split(/\s+/);
-    if (leadParts.length >= 2 && formParts.length >= 2) {
-      const firstMatch = formParts[0] === leadParts[0] && formParts[0].length >= 3;
-      const lastMatch = formParts[formParts.length - 1] === leadParts[leadParts.length - 1] && formParts[formParts.length - 1].length >= 3;
-      if (firstMatch && lastMatch) return true;
-    }
-    // One name contains the other fully (both must be long enough to avoid false positives)
-    if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(formNorm.length, leadNorm.length) >= 10) return true;
-  }
-  return false;
 }
 
 function extractAllValues(obj: unknown): string[] {
@@ -92,6 +37,50 @@ function extractNameCandidates(values: string[]): string[] {
   });
 }
 
+function extractEmail(values: string[]): string {
+  const emailVal = values.find(v => v.includes("@") && v.includes("."));
+  return emailVal ? emailVal.trim().toLowerCase() : "";
+}
+
+const MATCH_THRESHOLD = 50;
+
+function scoreMatch(phoneDigits: string, nameValues: string[], email: string, lead: { nome: string; whatsapp: string }): { score: number; method: string } {
+  let score = 0;
+  const methods: string[] = [];
+  const leadNorm = normalizeStr(lead.nome);
+  const leadParts = leadNorm.split(/\s+/);
+  const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
+
+  // Phone match (+60)
+  if (phoneDigits.length >= 8 && leadDigits.length >= 8) {
+    if (phoneDigits.slice(-8) === leadDigits.slice(-8)) { score += 60; methods.push("phone"); }
+    if (phoneDigits.length >= 9 && leadDigits.length >= 9 && phoneDigits.slice(-9) === leadDigits.slice(-9)) score += 10;
+  }
+
+  // Name matching
+  for (const name of nameValues) {
+    const formNorm = normalizeStr(name);
+    if (formNorm.length < 2) continue;
+    const formParts = formNorm.split(/\s+/);
+    if (formNorm === leadNorm) { score += 50; methods.push("exact_name"); break; }
+    if (leadParts.length >= 2 && formParts.length >= 2) {
+      if (formParts[0] === leadParts[0] && formParts[0].length >= 3 && formParts[formParts.length - 1] === leadParts[leadParts.length - 1] && formParts[formParts.length - 1].length >= 3) {
+        score += 40; methods.push("first_last"); break;
+      }
+    }
+    if (leadParts.length === 1 && leadParts[0].length >= 3 && formParts[0] === leadParts[0]) { score += 20; methods.push("first_name"); break; }
+    if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(formNorm.length, leadNorm.length) >= 10) { score += 25; methods.push("name_contains"); break; }
+  }
+
+  // Email contains lead name (+15)
+  if (email && leadParts[0] && leadParts[0].length >= 3) {
+    const emailLocal = email.split("@")[0];
+    if (emailLocal.includes(leadParts[0])) { score += 15; methods.push("email"); }
+  }
+
+  return { score, method: methods.join("+") };
+}
+
 // ─── WEBHOOK HANDLER ──────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -100,7 +89,6 @@ export async function POST(request: NextRequest) {
       console.error("FORMSAPP_WEBHOOK_SECRET not configured — rejecting webhook");
       return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
     }
-    // Forms.app can send the secret in various headers
     const authHeader = request.headers.get("authorization") || "";
     const hookSecret = request.headers.get("x-hook-secret") || "";
     const webhookSecret = request.headers.get("x-webhook-secret") || "";
@@ -123,6 +111,7 @@ export async function POST(request: NextRequest) {
     const allValues = extractAllValues(answers);
     const phoneDigits = extractPhoneDigits(allValues);
     const nameValues = extractNameCandidates(allValues);
+    const email = extractEmail(allValues);
 
     const supabase = getSupabase();
     if (!supabase) {
@@ -130,26 +119,29 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: "ok", warning: "db not configured" });
     }
 
-    // Fetch all leads for matching
     const { data: existingLeads } = await supabase
       .from("leads-calculadora-visionaria")
       .select("id, whatsapp, nome")
       .order("created_at", { ascending: false })
       .limit(2000);
 
-    let match = null;
+    // Score all leads and pick the best match
+    let bestMatch: typeof existingLeads extends Array<infer T> | null ? T : never = null as never;
+    let bestScore = 0;
+    let bestMethod = "";
 
-    // Try phone match first (improved: last 8-9 digits)
-    if (phoneDigits.length >= 8) {
-      match = existingLeads?.find((lead) => matchPhone(phoneDigits, lead.whatsapp)) || null;
+    if (existingLeads) {
+      for (const lead of existingLeads) {
+        const { score, method } = scoreMatch(phoneDigits, nameValues, email, { nome: lead.nome, whatsapp: lead.whatsapp });
+        if (score > bestScore && score >= MATCH_THRESHOLD) {
+          bestScore = score;
+          bestMatch = lead;
+          bestMethod = method;
+        }
+      }
     }
 
-    // Fallback: try name match with normalization
-    if (!match && nameValues.length > 0) {
-      match = existingLeads?.find((lead) => matchName(nameValues, lead.nome)) || null;
-    }
-
-    if (match) {
+    if (bestMatch) {
       await supabase
         .from("leads-calculadora-visionaria")
         .update({
@@ -157,13 +149,12 @@ export async function POST(request: NextRequest) {
           formsapp_data: payload,
           formsapp_at: new Date().toISOString(),
         })
-        .eq("id", match.id);
+        .eq("id", bestMatch.id);
 
-      console.log("Webhook: matched lead", match.id, "phone:", phoneDigits || "by name");
-      return NextResponse.json({ status: "ok", matched: true, lead_id: match.id });
+      console.log(`Webhook: matched lead ${bestMatch.id} via ${bestMethod} (score: ${bestScore})`);
+      return NextResponse.json({ status: "ok", matched: true, lead_id: bestMatch.id, method: bestMethod });
     }
 
-    // No match — store in unmatched table for later sync
     console.log("Webhook: no match found. Phone:", phoneDigits || "none", "Names:", nameValues.slice(0, 3).join(", "));
 
     await supabase.from("formsapp_unmatched").insert({
