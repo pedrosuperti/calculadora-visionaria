@@ -3,7 +3,7 @@ import { getSupabase } from "@/lib/supabase";
 import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
 
 function normalizeStr(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
+  return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
 }
 
 function extractAllValues(obj: unknown): string[] {
