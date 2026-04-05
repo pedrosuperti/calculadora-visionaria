@@ -2061,6 +2061,14 @@ function SyncSection() {
                   </div>
                 )}
                 <p style={{ color: "rgba(226,221,212,.4)", marginTop: 8 }}>Ainda sem match: <strong>{fixAllResult.step3_resync?.still_unmatched}</strong></p>
+                {fixAllResult.step3_resync?.still_unmatched_details?.length > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    <strong style={{ fontSize: 12 }}>Sem match:</strong>
+                    {fixAllResult.step3_resync.still_unmatched_details.map((u: { form_name: string; phone: string }, i: number) => (
+                      <div key={i} style={{ color: "rgba(226,221,212,.4)", marginLeft: 12, fontSize: 12 }}>{u.form_name} (tel: {u.phone})</div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {auditResult && (

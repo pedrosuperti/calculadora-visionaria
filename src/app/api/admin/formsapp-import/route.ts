@@ -27,38 +27,51 @@ function extractPhoneDigits(values: string[]): string {
   return "";
 }
 
-function matchPhone(phoneDigits: string, leadWhatsapp: string): boolean {
-  const leadDigits = (leadWhatsapp || "").replace(/\D/g, "");
-  if (leadDigits.length < 8 || phoneDigits.length < 8) return false;
-  if (phoneDigits.slice(-8) === leadDigits.slice(-8)) return true;
-  if (phoneDigits.length >= 9 && leadDigits.length >= 9 && phoneDigits.slice(-9) === leadDigits.slice(-9)) return true;
-  return false;
+function extractEmail(values: string[]): string {
+  const emailVal = values.find(v => v.includes("@") && v.includes("."));
+  return emailVal ? emailVal.trim().toLowerCase() : "";
 }
 
-function matchName(formNames: string[], leadNome: string): boolean {
-  const leadNorm = normalizeStr(leadNome);
-  if (leadNorm.length < 2) return false;
+const MATCH_THRESHOLD = 50;
+
+function scoreMatch(phoneDigits: string, nameValues: string[], email: string, lead: { nome: string; whatsapp: string }): { score: number; method: string } {
+  let score = 0;
+  const methods: string[] = [];
+  const leadNorm = normalizeStr(lead.nome);
   const leadParts = leadNorm.split(/\s+/);
-  for (const name of formNames) {
+  const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
+
+  // Phone match (+60)
+  if (phoneDigits.length >= 8 && leadDigits.length >= 8) {
+    if (phoneDigits.slice(-8) === leadDigits.slice(-8)) { score += 60; methods.push("phone"); }
+    if (phoneDigits.length >= 9 && leadDigits.length >= 9 && phoneDigits.slice(-9) === leadDigits.slice(-9)) score += 10;
+  }
+
+  // Name matching
+  for (const name of nameValues) {
     const formNorm = normalizeStr(name);
     if (formNorm.length < 2) continue;
-    // Exact full name match
-    if (formNorm === leadNorm) return true;
-    // Require first + last name match (not just first name alone)
     const formParts = formNorm.split(/\s+/);
+    if (formNorm === leadNorm) { score += 50; methods.push("exact_name"); break; }
     if (leadParts.length >= 2 && formParts.length >= 2) {
-      const firstMatch = formParts[0] === leadParts[0] && formParts[0].length >= 3;
-      const lastMatch = formParts[formParts.length - 1] === leadParts[leadParts.length - 1] && formParts[formParts.length - 1].length >= 3;
-      if (firstMatch && lastMatch) return true;
+      if (formParts[0] === leadParts[0] && formParts[0].length >= 3 && formParts[formParts.length - 1] === leadParts[leadParts.length - 1] && formParts[formParts.length - 1].length >= 3) {
+        score += 40; methods.push("first_last"); break;
+      }
     }
-    // One name contains the other fully (both must have 2+ words or be very long)
-    if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(formNorm.length, leadNorm.length) >= 10) return true;
+    if (leadParts.length === 1 && leadParts[0].length >= 3 && formParts[0] === leadParts[0]) { score += 20; methods.push("first_name"); break; }
+    if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(formNorm.length, leadNorm.length) >= 10) { score += 25; methods.push("name_contains"); break; }
   }
-  return false;
+
+  // Email contains lead name (+15)
+  if (email && leadParts[0] && leadParts[0].length >= 3) {
+    const emailLocal = email.split("@")[0];
+    if (emailLocal.includes(leadParts[0])) { score += 15; methods.push("email"); }
+  }
+
+  return { score, method: methods.join("+") };
 }
 
 // POST: Import array of Forms.app submissions
-// Body: { submissions: [ { ...payload }, ... ] }
 export async function POST(request: NextRequest) {
   if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
@@ -81,43 +94,48 @@ export async function POST(request: NextRequest) {
     let matched = 0;
     let stored = 0;
     let skipped = 0;
-    const results: { index: number; lead_id: number | null; lead_name: string | null; status: string }[] = [];
+    const results: { index: number; lead_id: number | null; lead_name: string | null; status: string; method?: string; score?: number }[] = [];
 
     for (let i = 0; i < submissions.length; i++) {
       const payload = submissions[i];
       const answers = payload.answers || payload.fields || payload.responses || payload;
       const allValues = extractAllValues(answers);
       const phoneDigits = extractPhoneDigits(allValues);
+      const email = extractEmail(allValues);
       const nameValues = allValues.filter((v) => {
         const t = v.trim();
         return t.length >= 2 && t.length <= 80 && !/^\d+$/.test(t) && !t.includes("@");
       });
 
-      let match = null;
+      // Score all leads and pick best match
+      let bestMatch: typeof leads[0] | null = null;
+      let bestScore = 0;
+      let bestMethod = "";
 
-      if (phoneDigits.length >= 8) {
-        match = leads.find((l) => matchPhone(phoneDigits, l.whatsapp)) || null;
-      }
-      if (!match && nameValues.length > 0) {
-        match = leads.find((l) => matchName(nameValues, l.nome)) || null;
+      for (const lead of leads) {
+        const { score, method } = scoreMatch(phoneDigits, nameValues, email, { nome: lead.nome, whatsapp: lead.whatsapp });
+        if (score > bestScore && score >= MATCH_THRESHOLD) {
+          bestScore = score;
+          bestMatch = lead;
+          bestMethod = method;
+        }
       }
 
-      if (match) {
-        if (match.formsapp_completed) {
+      if (bestMatch) {
+        if (bestMatch.formsapp_completed) {
           skipped++;
-          results.push({ index: i, lead_id: match.id, lead_name: match.nome, status: "already_matched" });
+          results.push({ index: i, lead_id: bestMatch.id, lead_name: bestMatch.nome, status: "already_matched" });
         } else {
           await supabase.from("leads-calculadora-visionaria").update({
             formsapp_completed: true,
             formsapp_data: payload,
             formsapp_at: payload.createdAt || payload.created_at || new Date().toISOString(),
-          }).eq("id", match.id);
-          match.formsapp_completed = true;
+          }).eq("id", bestMatch.id);
+          bestMatch.formsapp_completed = true;
           matched++;
-          results.push({ index: i, lead_id: match.id, lead_name: match.nome, status: "matched" });
+          results.push({ index: i, lead_id: bestMatch.id, lead_name: bestMatch.nome, status: "matched", method: bestMethod, score: bestScore });
         }
       } else {
-        // Store as unmatched
         await supabase.from("formsapp_unmatched").insert({
           payload,
           phone_digits: phoneDigits || null,
@@ -130,14 +148,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      status: "ok",
-      total: submissions.length,
-      matched,
-      already_matched: skipped,
-      unmatched_stored: stored,
-      results,
-    });
+    return NextResponse.json({ status: "ok", total: submissions.length, matched, already_matched: skipped, unmatched_stored: stored, results });
   } catch (error) {
     console.error("Import error:", error);
     return NextResponse.json({ error: String(error) }, { status: 500 });
