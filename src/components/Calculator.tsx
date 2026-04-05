@@ -746,6 +746,19 @@ export default function Calculator() {
           urgencia: data.urgencia,
           investimento: data.investimento,
           dores: data.dores,
+          ideias: diagnoseResult?.ideias?.map((ideia) => ({
+            nome: ideia.nome,
+            descricao: ideia.descricao,
+            potencial_anual: ideia.potencial_anual,
+            tempo_retorno_dias: ideia.tempo_retorno_dias,
+            concorrencia: ideia.concorrencia,
+            dificuldade: ideia.dificuldade,
+            usa_ia: ideia.usa_ia,
+            como_usa_ia: ideia.como_usa_ia,
+            projecao_6m: ideia.projecao_6m,
+            projecao_12m: ideia.projecao_12m,
+            projecao_24m: ideia.projecao_24m,
+          })) || null,
         }),
       });
       if (!res.ok) {

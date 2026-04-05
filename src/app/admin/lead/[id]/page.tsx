@@ -331,6 +331,33 @@ export default function LeadFichaPage() {
           />
         </section>
 
+        {/* ─── IDEIAS DE NEGOCIO ─── */}
+        {lead.ideias && lead.ideias.length > 0 && (
+          <section className="adm-ficha-section">
+            <h2 className="adm-ficha-section-title">Ideias de Negocio (IA)</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {lead.ideias.map((ideia, i) => (
+                <div key={i} style={{ padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 8, border: "1px solid rgba(255,255,255,.06)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 18 }}>{["💡", "🚀", "🎯"][i]}</span>
+                    <strong style={{ fontSize: 15, color: "#C9A84C" }}>{ideia.nome}</strong>
+                    {ideia.usa_ia && <span style={{ fontSize: 10, padding: "2px 6px", background: "#A855F718", color: "#A855F7", borderRadius: 4, fontWeight: 700 }}>IA</span>}
+                  </div>
+                  <p style={{ fontSize: 13, color: "rgba(226,221,212,.7)", margin: "0 0 10px", lineHeight: 1.5 }}>{ideia.descricao}</p>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 12 }}>
+                    <span style={{ color: "#22C55E" }}>Potencial: <strong>R${(ideia.potencial_anual / 1000).toFixed(0)}K/ano</strong></span>
+                    {ideia.projecao_12m && <span style={{ color: "rgba(226,221,212,.5)" }}>12m: R${(ideia.projecao_12m / 1000).toFixed(0)}K</span>}
+                    {ideia.tempo_retorno_dias && <span style={{ color: "rgba(226,221,212,.5)" }}>ROI: {ideia.tempo_retorno_dias}d</span>}
+                    {ideia.concorrencia && <span style={{ color: "rgba(226,221,212,.5)" }}>Conc: {ideia.concorrencia}</span>}
+                    {ideia.dificuldade && <span style={{ color: "rgba(226,221,212,.5)" }}>Dif: {ideia.dificuldade}</span>}
+                  </div>
+                  {ideia.como_usa_ia && <p style={{ fontSize: 12, color: "rgba(226,221,212,.4)", marginTop: 8, fontStyle: "italic" }}>{ideia.como_usa_ia}</p>}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* ─── FORMS.APP RESPONSES ─── */}
         <section className="adm-ficha-section">
           <h2 className="adm-ficha-section-title">Formulário de Aplicação</h2>

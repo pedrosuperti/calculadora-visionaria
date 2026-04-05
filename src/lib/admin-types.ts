@@ -19,6 +19,21 @@ export interface Lead {
   formsapp_at: string | null;
   formsapp_data: Record<string, unknown> | null;
   share_token: string | null;
+  ideias: IdeiaLead[] | null;
+}
+
+export interface IdeiaLead {
+  nome: string;
+  descricao: string;
+  potencial_anual: number;
+  tempo_retorno_dias?: number;
+  concorrencia?: string;
+  dificuldade?: string;
+  usa_ia?: boolean;
+  como_usa_ia?: string;
+  projecao_6m?: number;
+  projecao_12m?: number;
+  projecao_24m?: number;
 }
 
 export type ContactStatus = "" | "novo" | "contactado" | "agendou" | "sem_resposta" | "descartado";
