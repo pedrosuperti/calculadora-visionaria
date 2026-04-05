@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import type { Lead } from "@/lib/admin-types";
 import { CONTACT_LABELS, CONTACT_COLORS, TIER_COLORS } from "@/lib/admin-types";
 import type { ContactStatus } from "@/lib/admin-types";
-import { timeAgo, parseFormsAppData, computeTags } from "@/lib/admin-utils";
+import { timeAgo, parseFormsAppData, computeTags, detectFormMismatch } from "@/lib/admin-utils";
 
 // ─── AUTH HELPERS ────────────────────────────────────────────────────────────
 function getAuthToken(): string {
@@ -89,6 +89,20 @@ export default function LeadFichaPage() {
       headers: authJsonHeaders(),
       body: JSON.stringify({ id: lead.id, ...data }),
     });
+  };
+
+  const unlinkForm = async () => {
+    if (!lead) return;
+    try {
+      const res = await fetch("/api/admin/formsapp-audit", {
+        method: "POST",
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ lead_id: lead.id }),
+      });
+      const data = await res.json();
+      if (data.error) { alert("Erro: " + data.error); return; }
+      setLead({ ...lead, formsapp_completed: false, formsapp_data: null, formsapp_at: null });
+    } catch (e) { alert("Erro: " + String(e)); }
   };
 
   const fetchInsights = async () => {
@@ -361,6 +375,29 @@ export default function LeadFichaPage() {
         {/* ─── FORMS.APP RESPONSES ─── */}
         <section className="adm-ficha-section">
           <h2 className="adm-ficha-section-title">Formulário de Aplicação</h2>
+          {(() => {
+            const mm = detectFormMismatch(lead);
+            if (!mm) return null;
+            return (
+              <div style={{ padding: 14, marginBottom: 16, background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.3)", borderRadius: 8 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#EF4444", marginBottom: 4 }}>Possivel pessoa diferente</div>
+                    <div style={{ fontSize: 13, color: "rgba(226,221,212,.7)" }}>
+                      Perfil: <strong>{lead.nome}</strong> &middot; Form: <strong>{mm.formName}</strong>
+                    </div>
+                    <div style={{ fontSize: 12, color: "rgba(226,221,212,.4)", marginTop: 2 }}>Os nomes nao parecem ser da mesma pessoa. Confira os dados abaixo.</div>
+                  </div>
+                  <button
+                    style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "rgba(239,68,68,.2)", color: "#EF4444", border: "1px solid rgba(239,68,68,.4)", borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap" }}
+                    onClick={() => { if (confirm(`Desvincular formulario de "${mm.formName}" do lead "${lead.nome}"?\n\nOs dados do formulario serao salvos para vincular ao lead correto.`)) unlinkForm(); }}
+                  >
+                    Desvincular
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
           {!lead.formsapp_completed ? (
             <div className="adm-forms-empty">
               <span className="adm-forms-empty-icon">📋</span>

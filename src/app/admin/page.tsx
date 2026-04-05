@@ -255,6 +255,55 @@ function InfoTip({ text }: { text: string }) {
   );
 }
 
+// ─── FORM MISMATCH DETECTION ────────────────────────────────────────────────
+
+function detectFormMismatch(lead: Lead): { mismatch: boolean; formName: string; formPhone: string } | null {
+  if (!lead.formsapp_data) return null;
+  const data = lead.formsapp_data as Record<string, unknown>;
+  const answers = (data.answers || data.fields || data.responses) as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(answers)) return null;
+
+  let formName = "";
+  let formPhone = "";
+  for (const a of answers) {
+    const title = ((a.title ?? a.question ?? a.label ?? "") as string).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const value = String(a.value ?? a.answer ?? a.response ?? "");
+    if (title.includes("nome") && !title.includes("empresa")) formName = value;
+    if (title.includes("telefone") || title.includes("whatsapp")) formPhone = value;
+  }
+
+  if (!formName) return null;
+
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
+  const leadNorm = norm(lead.nome || "");
+  const formNorm = norm(formName);
+
+  if (leadNorm === formNorm) return null;
+
+  const leadParts = leadNorm.split(/\s+/);
+  const formParts = formNorm.split(/\s+/);
+
+  // First + last name match → ok
+  if (leadParts.length >= 2 && formParts.length >= 2 && leadParts[0] === formParts[0] && leadParts[leadParts.length - 1] === formParts[formParts.length - 1]) return null;
+
+  // Short lead name starts form name + phone matches → ok
+  if (leadParts.length === 1 && formParts[0] === leadParts[0]) {
+    const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
+    const formDigits = formPhone.replace(/\D/g, "");
+    if (leadDigits.length >= 8 && formDigits.length >= 8 && leadDigits.slice(-8) === formDigits.slice(-8)) return null;
+  }
+
+  // One contains the other, long enough → ok
+  if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(leadNorm.length, formNorm.length) >= 10) return null;
+
+  // Phone match → ok
+  const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
+  const formDigits = formPhone.replace(/\D/g, "");
+  if (leadDigits.length >= 8 && formDigits.length >= 8 && leadDigits.slice(-8) === formDigits.slice(-8)) return null;
+
+  return { mismatch: true, formName, formPhone };
+}
+
 // ─── AUTH HELPERS ───────────────────────────────────────────────────────────
 
 function getAuthToken(): string {
@@ -789,6 +838,22 @@ export default function AdminDashboard() {
     setLeads((prev) =>
       prev.map((l) => (l.id === id ? { ...l, ...data } : l))
     );
+  };
+
+  const unlinkForm = async (leadId: number) => {
+    try {
+      const res = await fetch("/api/admin/formsapp-audit", {
+        method: "POST",
+        headers: authJsonHeaders(),
+        body: JSON.stringify({ lead_id: leadId }),
+      });
+      const data = await res.json();
+      if (data.error) { alert("Erro: " + data.error); return; }
+      // Update local state
+      setLeads((prev) =>
+        prev.map((l) => l.id === leadId ? { ...l, formsapp_completed: false, formsapp_data: null, formsapp_at: null } : l)
+      );
+    } catch (e) { alert("Erro: " + String(e)); }
   };
 
   // ─── LOGIN ────────────────────────────────────────────────────────────────
@@ -1576,8 +1641,32 @@ export default function AdminDashboard() {
               {/* Forms.app */}
               <div className="adm-ficha-section">
                 <h2 className="adm-ficha-section-title">Formulário de Aplicação</h2>
+                {/* Mismatch warning */}
+                {(() => {
+                  const mm = detectFormMismatch(dl);
+                  if (!mm) return null;
+                  return (
+                    <div style={{ padding: 14, marginBottom: 16, background: "rgba(239,68,68,.1)", border: "1px solid rgba(239,68,68,.3)", borderRadius: 8 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: "#EF4444", marginBottom: 4 }}>Possivel pessoa diferente</div>
+                          <div style={{ fontSize: 13, color: "rgba(226,221,212,.7)" }}>
+                            Perfil: <strong>{dl.nome}</strong> &middot; Form: <strong>{mm.formName}</strong>
+                          </div>
+                          <div style={{ fontSize: 12, color: "rgba(226,221,212,.4)", marginTop: 2 }}>Os nomes nao parecem ser da mesma pessoa. Confira os dados abaixo.</div>
+                        </div>
+                        <button
+                          style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, background: "rgba(239,68,68,.2)", color: "#EF4444", border: "1px solid rgba(239,68,68,.4)", borderRadius: 6, cursor: "pointer", whiteSpace: "nowrap" }}
+                          onClick={() => { if (confirm(`Desvincular formulario de "${mm.formName}" do lead "${dl.nome}"?\n\nOs dados do formulario serao salvos para vincular ao lead correto.`)) unlinkForm(dl.id); }}
+                        >
+                          Desvincular
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
                 {!dl.formsapp_completed ? (
-                  <div className="adm-forms-empty"><span className="adm-forms-empty-icon">📋</span><p>Este lead ainda não preencheu o formulário de aplicação.</p></div>
+                  <div className="adm-forms-empty"><span className="adm-forms-empty-icon">���</span><p>Este lead ainda não preencheu o formulário de aplicação.</p></div>
                 ) : qa.length > 0 ? (
                   <div className="adm-forms-section" style={{ margin: 0 }}>
                     <div className="adm-forms-header">

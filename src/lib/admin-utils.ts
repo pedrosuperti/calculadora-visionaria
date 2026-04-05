@@ -147,3 +147,41 @@ export function computeTags(lead: Lead): SmartTag[] {
   }
   return tags;
 }
+
+export function detectFormMismatch(lead: Lead): { mismatch: boolean; formName: string; formPhone: string } | null {
+  if (!lead.formsapp_data) return null;
+  const data = lead.formsapp_data as Record<string, unknown>;
+  const answers = (data.answers || data.fields || data.responses) as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(answers)) return null;
+
+  let formName = "";
+  let formPhone = "";
+  for (const a of answers) {
+    const title = ((a.title ?? a.question ?? a.label ?? "") as string).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const value = String(a.value ?? a.answer ?? a.response ?? "");
+    if (title.includes("nome") && !title.includes("empresa")) formName = value;
+    if (title.includes("telefone") || title.includes("whatsapp")) formPhone = value;
+  }
+  if (!formName) return null;
+
+  const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s]/g, "").trim();
+  const leadNorm = norm(lead.nome || "");
+  const formNorm = norm(formName);
+  if (leadNorm === formNorm) return null;
+
+  const leadParts = leadNorm.split(/\s+/);
+  const formParts = formNorm.split(/\s+/);
+
+  if (leadParts.length >= 2 && formParts.length >= 2 && leadParts[0] === formParts[0] && leadParts[leadParts.length - 1] === formParts[formParts.length - 1]) return null;
+  if (leadParts.length === 1 && formParts[0] === leadParts[0]) {
+    const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
+    const formDigits = formPhone.replace(/\D/g, "");
+    if (leadDigits.length >= 8 && formDigits.length >= 8 && leadDigits.slice(-8) === formDigits.slice(-8)) return null;
+  }
+  if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(leadNorm.length, formNorm.length) >= 10) return null;
+  const leadDigits = (lead.whatsapp || "").replace(/\D/g, "");
+  const formDigits = formPhone.replace(/\D/g, "");
+  if (leadDigits.length >= 8 && formDigits.length >= 8 && leadDigits.slice(-8) === formDigits.slice(-8)) return null;
+
+  return { mismatch: true, formName, formPhone };
+}
