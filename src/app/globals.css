@@ -1004,3 +1004,90 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;-webkit-overflow-scrol
 /* Recharts tooltip override */
 .recharts-tooltip-wrapper{outline:none}
 .recharts-default-tooltip{background:#0D1117!important;border:1px solid rgba(201,168,76,.2)!important}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   APLICACAO FORM — /aplicacao/[token]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.app-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;background:linear-gradient(180deg,#070B14 0%,#0A1628 40%,#0D1B30 100%);overflow:hidden;padding:20px}
+.app-starfield{position:fixed;inset:0;z-index:0;pointer-events:none}
+.app-center{position:relative;z-index:1;width:100%;max-width:640px;display:flex;flex-direction:column;align-items:center}
+
+/* Progress bar */
+.app-progress-bar{position:fixed;top:0;left:0;right:0;height:4px;background:rgba(255,255,255,.08);z-index:10}
+.app-progress-fill{height:100%;background:linear-gradient(90deg,#C9A84C,#E8C547);transition:width .4s ease;border-radius:0 2px 2px 0}
+
+/* Card */
+.app-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:40px 36px;width:100%;text-align:center;backdrop-filter:blur(12px)}
+
+/* Typography */
+.app-title{font-family:'Bebas Neue',sans-serif;font-size:36px;letter-spacing:2px;color:#fff;margin-bottom:16px}
+.app-subtitle{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:#fff;margin-bottom:12px}
+.app-text{color:rgba(226,221,212,.75);font-size:16px;line-height:1.7;margin-bottom:12px}
+.app-attention{color:#F97316;margin-top:16px}
+.app-divider{width:60px;height:1px;background:rgba(201,168,76,.3);margin:24px auto}
+
+/* Hero image area */
+.app-hero-img{width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,rgba(10,22,40,.9),rgba(13,27,48,.7));border-radius:12px;display:flex;align-items:flex-end;justify-content:center;padding:30px 20px;margin-bottom:28px;position:relative;overflow:hidden}
+.app-hero-img::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(201,168,76,.08),transparent 70%)}
+.app-hero-text{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:#fff;text-align:center;line-height:1.3;position:relative;text-shadow:0 2px 20px rgba(0,0,0,.5)}
+
+/* Step number */
+.app-step-num{font-family:'Bebas Neue',sans-serif;font-size:20px;color:rgba(201,168,76,.6);margin-bottom:8px;text-align:left}
+
+/* Field title */
+.app-field-title{font-size:20px;font-weight:600;color:#fff;text-align:left;margin-bottom:6px;line-height:1.4}
+.app-required{color:#C9A84C;margin-left:4px}
+.app-field-sub{font-size:14px;color:rgba(226,221,212,.4);text-align:left;margin-bottom:16px}
+
+/* Inputs */
+.app-input,.app-textarea,.app-select{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:16px 18px;font-size:16px;color:#fff;font-family:'Outfit',sans-serif;outline:none;transition:border-color .2s,box-shadow .2s;margin-top:8px}
+.app-input:focus,.app-textarea:focus,.app-select:focus{border-color:rgba(201,168,76,.5);box-shadow:0 0 0 3px rgba(201,168,76,.1)}
+.app-input::placeholder,.app-textarea::placeholder{color:rgba(226,221,212,.25)}
+.app-textarea{resize:vertical;min-height:100px}
+.app-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center}
+.app-select option{background:#0D1117;color:#E2DDD4;padding:12px}
+
+/* Radio buttons */
+.app-radio-group{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.app-radio-btn{width:100%;padding:16px 20px;background:rgba(255,255,255,.95);color:#1a1a2e;font-size:16px;font-family:'Outfit',sans-serif;border:2px solid transparent;border-radius:10px;cursor:pointer;text-align:left;transition:all .2s;font-weight:500}
+.app-radio-btn:hover{background:#fff;transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,0,0,.2)}
+.app-radio-btn.selected{background:rgba(201,168,76,.15);color:#C9A84C;border-color:#C9A84C;font-weight:600}
+
+/* Error */
+.app-field-error{color:#EF4444;font-size:14px;text-align:left;margin-top:8px}
+
+/* Navigation */
+.app-nav{display:flex;justify-content:space-between;align-items:center;margin-top:28px;gap:12px}
+.app-btn-primary{display:inline-flex;align-items:center;gap:8px;padding:14px 32px;background:rgba(201,168,76,.85);color:#07090F;font-size:16px;font-weight:700;font-family:'Outfit',sans-serif;border:none;border-radius:10px;cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.app-btn-primary:hover{background:#C9A84C;transform:translateY(-1px);box-shadow:0 4px 20px rgba(201,168,76,.3)}
+.app-btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.app-btn-back{display:inline-flex;align-items:center;gap:6px;padding:14px 20px;background:transparent;color:rgba(226,221,212,.5);font-size:15px;font-family:'Outfit',sans-serif;border:none;cursor:pointer;transition:color .2s}
+.app-btn-back:hover{color:#fff}
+.app-btn-arrow{font-size:20px;line-height:1}
+
+/* Success */
+.app-success-emoji{font-size:48px;margin-bottom:16px}
+
+/* Spinner */
+.app-spinner{width:32px;height:32px;border:3px solid rgba(201,168,76,.2);border-top-color:#C9A84C;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+
+/* Animations */
+@keyframes appFadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes appSlideNext{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes appSlidePrev{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+.app-fade-in{animation:appFadeIn .5s ease}
+.app-fade-next{animation:appSlideNext .35s ease}
+.app-fade-prev{animation:appSlidePrev .35s ease}
+
+/* Mobile */
+@media(max-width:640px){
+  .app-wrap{padding:16px 12px}
+  .app-card{padding:28px 20px;border-radius:12px}
+  .app-title{font-size:28px}
+  .app-hero-text{font-size:22px}
+  .app-field-title{font-size:17px}
+  .app-btn-primary{padding:14px 24px;font-size:15px;width:100%}
+  .app-nav{flex-direction:column-reverse;gap:8px}
+  .app-btn-back{width:100%;justify-content:center}
+}
