@@ -99,8 +99,19 @@ export async function POST(request: NextRequest) {
       console.error("FORMSAPP_WEBHOOK_SECRET not configured — rejecting webhook");
       return NextResponse.json({ error: "Webhook not configured" }, { status: 503 });
     }
+    // Forms.app can send the secret in various headers
     const authHeader = request.headers.get("authorization") || "";
-    if (authHeader !== WEBHOOK_SECRET && authHeader !== `Bearer ${WEBHOOK_SECRET}`) {
+    const hookSecret = request.headers.get("x-hook-secret") || "";
+    const webhookSecret = request.headers.get("x-webhook-secret") || "";
+    const formSecret = request.headers.get("x-form-secret") || "";
+    const secretMatch = [authHeader, `Bearer ${hookSecret}`, `Bearer ${webhookSecret}`, `Bearer ${formSecret}`, hookSecret, webhookSecret, formSecret]
+      .some((val) => val === WEBHOOK_SECRET || val === `Bearer ${WEBHOOK_SECRET}`);
+    if (!secretMatch) {
+      console.error("Webhook auth failed. Headers received:", JSON.stringify({
+        authorization: authHeader.slice(0, 20) + "...",
+        "x-hook-secret": hookSecret ? "set" : "empty",
+        "x-webhook-secret": webhookSecret ? "set" : "empty",
+      }));
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

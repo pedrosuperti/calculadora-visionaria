@@ -14,20 +14,82 @@ export function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("pt-BR");
 }
 
+// Known Forms.app question patterns for re-splitting concatenated answers
+const FORM_QUESTIONS = [
+  "Telefone que gostaria de ser contatado",
+  "Nome de sua empresa",
+  "Quantos Funcionários tem na empresa",
+  "Quantos Funcionarios tem na empresa",
+  "Qual é faturamento mensal",
+  "Qual e faturamento mensal",
+  "Seu site",
+  "Instagram",
+  "Qual o ramo de atuação",
+  "Qual o ramo de atuacao",
+  "Quais os problemas ou desafios",
+  "Qual o seu nível de urgência",
+  "Qual o seu nivel de urgencia",
+  "Como você faz o marketing",
+  "Como voce faz o marketing",
+  "Quanto investe nele",
+  "Quais canais ou meios utiliza",
+  "Qual você diria ser seu Fator X",
+  "Qual voce diria ser seu Fator X",
+  "O quanto você já aplica Inteligência Artificial",
+  "O quanto voce ja aplica Inteligencia Artificial",
+  "Há algo importante",
+  "Ha algo importante",
+  "Se possível, que seja o mesmo do seu WhatsApp",
+];
+
+function reSplitAnswer(question: string, answer: string): { question: string; answer: string }[] {
+  // Check if the answer contains embedded questions (from bad import)
+  const results: { question: string; answer: string }[] = [];
+  let remaining = answer;
+
+  // Find all embedded question positions
+  const splits: { pos: number; q: string }[] = [];
+  for (const fq of FORM_QUESTIONS) {
+    const idx = remaining.indexOf(fq);
+    if (idx > 0) splits.push({ pos: idx, q: fq });
+  }
+
+  if (splits.length === 0) {
+    return [{ question, answer }];
+  }
+
+  // Sort by position
+  splits.sort((a, b) => a.pos - b.pos);
+
+  // First part is the actual answer to the original question
+  const firstAnswer = remaining.slice(0, splits[0].pos).trim();
+  if (firstAnswer) results.push({ question, answer: firstAnswer });
+
+  // Extract each embedded Q&A
+  for (let i = 0; i < splits.length; i++) {
+    const start = splits[i].pos + splits[i].q.length;
+    const end = i + 1 < splits.length ? splits[i + 1].pos : remaining.length;
+    let val = remaining.slice(start, end).replace(/^\s*[?:.\s]+/, "").trim();
+    if (val) results.push({ question: splits[i].q, answer: val });
+  }
+
+  return results.length > 0 ? results : [{ question, answer }];
+}
+
 export function parseFormsAppData(data: Record<string, unknown> | null): { question: string; answer: string }[] {
   if (!data) return [];
-  const results: { question: string; answer: string }[] = [];
+  let results: { question: string; answer: string }[] = [];
   const answers = (data.answers || data.fields || data.responses || []) as unknown[];
   if (Array.isArray(answers)) {
     for (const a of answers) {
       if (a && typeof a === "object") {
         const obj = a as Record<string, unknown>;
-        const q = String(obj.title || obj.question || obj.label || obj.field || "");
+        const q = String(obj.title ?? obj.question ?? obj.label ?? obj.field ?? "");
         let v = obj.value ?? obj.answer ?? obj.response ?? "";
         if (Array.isArray(v)) v = v.join(", ");
         if (typeof v === "object" && v !== null) v = JSON.stringify(v);
         const ans = String(v).trim();
-        if (q && ans) results.push({ question: q, answer: ans });
+        if (q && ans) results.push(...reSplitAnswer(q, ans));
       }
     }
   }
@@ -36,7 +98,7 @@ export function parseFormsAppData(data: Record<string, unknown> | null): { quest
     for (const [k, v] of Object.entries(data)) {
       if (skip.has(k) || v === null || v === undefined || v === "") continue;
       const val = typeof v === "object" ? JSON.stringify(v) : String(v);
-      results.push({ question: k, answer: val });
+      results.push(...reSplitAnswer(k, val));
     }
   }
   return results;
