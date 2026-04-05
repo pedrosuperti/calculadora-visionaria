@@ -345,6 +345,37 @@ export default function AdminDashboard() {
   const [calcEvents, setCalcEvents] = useState<CalcEvent[]>([]);
   const [detailLeadId, setDetailLeadId] = useState<number | null>(null);
 
+  // Navigate to lead detail and update URL
+  const openLeadDetail = useCallback((leadId: number) => {
+    setDetailLeadId(leadId);
+    setInsights(null);
+    setPage("lead-detail");
+    window.history.pushState({ page: "lead-detail", leadId }, "", `/admin/lead/${leadId}`);
+  }, []);
+
+  // Navigate away from lead detail and restore URL
+  const navigateTo = useCallback((target: "home" | "leads" | "analytics-leads" | "analytics-calc" | "sync") => {
+    setPage(target);
+    setDetailLeadId(null);
+    window.history.pushState({ page: target }, "", "/admin");
+  }, []);
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state?.page === "lead-detail" && e.state?.leadId) {
+        setDetailLeadId(e.state.leadId);
+        setInsights(null);
+        setPage("lead-detail");
+      } else {
+        setPage(e.state?.page || "home");
+        setDetailLeadId(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   const fetchCalcAnalytics = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/analytics", { headers: authHeaders() });
@@ -801,12 +832,12 @@ export default function AdminDashboard() {
         <div className="adm-side-brand">V.I.S.O.R.</div>
         <div className="adm-side-sub">Central de Leads</div>
         <nav className="adm-side-nav">
-          <button className={`adm-nav${page === "home" ? " active" : ""}`} onClick={() => { setPage("home"); setSideOpen(false); }}>Dashboard</button>
-          <button className={`adm-nav${page === "leads" ? " active" : ""}`} onClick={() => { setPage("leads"); setSideOpen(false); }}>Leads</button>
+          <button className={`adm-nav${page === "home" ? " active" : ""}`} onClick={() => { navigateTo("home"); setSideOpen(false); }}>Dashboard</button>
+          <button className={`adm-nav${page === "leads" ? " active" : ""}`} onClick={() => { navigateTo("leads"); setSideOpen(false); }}>Leads</button>
           <div className="adm-nav-group">
             <div className={`adm-nav-label${page.startsWith("analytics") ? " active" : ""}`}>Analytics</div>
-            <button className={`adm-nav sub${page === "analytics-leads" ? " active" : ""}`} onClick={() => { setPage("analytics-leads"); setSideOpen(false); }}>Leads</button>
-            <button className={`adm-nav sub${page === "analytics-calc" ? " active" : ""}`} onClick={() => { setPage("analytics-calc"); setSideOpen(false); }}>Calculadora</button>
+            <button className={`adm-nav sub${page === "analytics-leads" ? " active" : ""}`} onClick={() => { navigateTo("analytics-leads"); setSideOpen(false); }}>Leads</button>
+            <button className={`adm-nav sub${page === "analytics-calc" ? " active" : ""}`} onClick={() => { navigateTo("analytics-calc"); setSideOpen(false); }}>Calculadora</button>
           </div>
         </nav>
         <div className="adm-side-actions">
@@ -814,7 +845,7 @@ export default function AdminDashboard() {
             const res = await fetch("/api/admin/leads/export", { headers: authHeaders() });
             if (res.ok) { const blob = await res.blob(); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `leads-visor-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }
           }}>Exportar CSV</button>
-          <button className={`adm-nav${page === "sync" ? " active" : ""}`} onClick={() => { setPage("sync"); setSideOpen(false); }}>Sync Forms.app</button>
+          <button className={`adm-nav${page === "sync" ? " active" : ""}`} onClick={() => { navigateTo("sync"); setSideOpen(false); }}>Sync Forms.app</button>
           <button className="adm-nav" onClick={fetchLeads} disabled={loading}>{loading ? "..." : "Atualizar"}</button>
         </div>
         <div className="adm-side-foot">
@@ -844,7 +875,7 @@ export default function AdminDashboard() {
             <span className="adm-alert-icon">!</span>
             <span>{hotAlerts.length} lead{hotAlerts.length > 1 ? "s" : ""} HOT sem contato há mais de 1h:</span>
             <span className="adm-alert-names">{hotAlerts.slice(0, 3).map((l) => l.nome || "Sem nome").join(", ")}{hotAlerts.length > 3 && ` +${hotAlerts.length - 3}`}</span>
-            <button className="adm-alert-btn" onClick={() => { setFilter("hot"); setPage("leads"); }}>Ver esses leads</button>
+            <button className="adm-alert-btn" onClick={() => { setFilter("hot"); navigateTo("leads"); }}>Ver esses leads</button>
           </div>
         )}
 
@@ -931,7 +962,7 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="adm-mini-list">
                     {needsAttention.map((l) => (
-                      <div key={l.id} className="adm-mini-card" onClick={() => { setDetailLeadId(l.id); setInsights(null); setPage("lead-detail"); }}>
+                      <div key={l.id} className="adm-mini-card" onClick={() => { openLeadDetail(l.id); }}>
                         <div className="adm-mini-card-score" style={{ borderColor: TIER_COLORS[(l.tier || "cold") as keyof typeof TIER_COLORS] }}>{l.internal_score || 0}</div>
                         <div className="adm-mini-card-info">
                           <span className="adm-mini-card-name">{l.nome || "Sem nome"}</span>
@@ -949,7 +980,7 @@ export default function AdminDashboard() {
             <div className="adm-section-title">LEADS RECENTES</div>
             <div className="adm-list">
               {recentLeads.map((lead) => (
-                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setDetailLeadId(lead.id); setInsights(null); setPage("lead-detail"); }}>
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { openLeadDetail(lead.id); }}>
                   <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
                   <div className="adm-card-body">
                     <div className="adm-card-row1">
@@ -968,7 +999,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
-              <button className="adm-view-all" onClick={() => setPage("leads")}>VER TODOS OS LEADS</button>
+              <button className="adm-view-all" onClick={() => navigateTo("leads")}>VER TODOS OS LEADS</button>
             </div>
           </>
         )}
@@ -1325,7 +1356,7 @@ export default function AdminDashboard() {
             <div className="adm-list">
               {filtered.length === 0 && <div className="adm-empty">{loading ? "Carregando..." : "Nenhum lead encontrado."}</div>}
               {filtered.map((lead) => (
-                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { setDetailLeadId(lead.id); setInsights(null); setPage("lead-detail"); }}>
+                <div key={lead.id} className={`adm-card ${lead.tier || "cold"}`} onClick={() => { openLeadDetail(lead.id); }}>
                   <div className="adm-card-score" style={{ borderColor: TIER_COLORS[(lead.tier || "cold") as keyof typeof TIER_COLORS] }}>{lead.internal_score || 0}</div>
                   <div className="adm-card-body">
                     <div className="adm-card-row1">
@@ -1354,7 +1385,7 @@ export default function AdminDashboard() {
         {/* ═══ LEAD DETAIL (FICHA) ═══ */}
         {page === "lead-detail" && (() => {
           const dl = leads.find((l) => l.id === detailLeadId);
-          if (!dl) return <div style={{ padding: 40, textAlign: "center", color: "rgba(226,221,212,.4)" }}>Lead não encontrado. <button className="adm-modal-ficha-link" onClick={() => setPage("leads")}>← Voltar</button></div>;
+          if (!dl) return <div style={{ padding: 40, textAlign: "center", color: "rgba(226,221,212,.4)" }}>Lead não encontrado. <button className="adm-modal-ficha-link" onClick={() => navigateTo("leads")}>← Voltar</button></div>;
           const qa = dl.formsapp_data ? parseFormsAppData(dl.formsapp_data) : [];
           const tierColor = TIER_COLORS[(dl.tier || "cold") as keyof typeof TIER_COLORS];
           const whatsappMsg = insights?.frase_gancho
@@ -1364,7 +1395,7 @@ export default function AdminDashboard() {
             <>
               {/* Back bar */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <button className="adm-modal-ficha-link" onClick={() => { setPage("leads"); setInsights(null); }} style={{ fontSize: 14 }}>← Voltar para Leads</button>
+                <button className="adm-modal-ficha-link" onClick={() => { navigateTo("leads"); setInsights(null); }} style={{ fontSize: 14 }}>← Voltar para Leads</button>
                 <div style={{ flex: 1 }} />
                 <a
                   href={`https://wa.me/${(dl.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`}
