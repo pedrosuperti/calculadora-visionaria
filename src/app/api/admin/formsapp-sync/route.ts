@@ -21,14 +21,21 @@ function matchPhone(phoneDigits: string, leadWhatsapp: string): boolean {
 function matchName(formNames: string[], leadNome: string): boolean {
   const leadNorm = normalizeStr(leadNome);
   if (leadNorm.length < 2) return false;
-  const leadFirst = leadNorm.split(/\s+/)[0];
+  const leadParts = leadNorm.split(/\s+/);
   for (const name of formNames) {
     const formNorm = normalizeStr(name);
     if (formNorm.length < 2) continue;
-    const formFirst = formNorm.split(/\s+/)[0];
+    // Exact full name match
     if (formNorm === leadNorm) return true;
-    if (formFirst === leadFirst && formFirst.length >= 3) return true;
-    if (leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) return true;
+    // Require first + last name match (not just first name alone)
+    const formParts = formNorm.split(/\s+/);
+    if (leadParts.length >= 2 && formParts.length >= 2) {
+      const firstMatch = formParts[0] === leadParts[0] && formParts[0].length >= 3;
+      const lastMatch = formParts[formParts.length - 1] === leadParts[leadParts.length - 1] && formParts[formParts.length - 1].length >= 3;
+      if (firstMatch && lastMatch) return true;
+    }
+    // One name contains the other fully (both must be long enough to avoid false positives)
+    if ((leadNorm.includes(formNorm) || formNorm.includes(leadNorm)) && Math.min(formNorm.length, leadNorm.length) >= 10) return true;
   }
   return false;
 }
