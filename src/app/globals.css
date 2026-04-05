@@ -947,6 +947,8 @@ body.modal-open{overflow:hidden;position:fixed;width:100%;-webkit-overflow-scrol
 .adm-ficha-back{color:#C9A84C;text-decoration:none;font-size:14px;font-weight:600;white-space:nowrap}
 .adm-ficha-back:hover{text-decoration:underline}
 .adm-ficha-topbar-name{flex:1;font-family:'Bebas Neue',sans-serif;font-size:18px;color:#E2DDD4;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.adm-ficha-topbar-share{padding:6px 16px;background:transparent;color:#C9A84C;font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;border:1px solid #C9A84C40;cursor:pointer;transition:all .2s}
+.adm-ficha-topbar-share:hover{background:#C9A84C18;border-color:#C9A84C}
 .adm-ficha-topbar-wa{padding:6px 16px;background:#25D366;color:#fff;font-size:12px;font-weight:700;letter-spacing:1px;text-decoration:none;text-transform:uppercase;white-space:nowrap}
 
 .adm-ficha-content{max-width:800px;margin:0 auto;padding:24px}

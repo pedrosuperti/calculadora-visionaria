@@ -1398,6 +1398,18 @@ export default function AdminDashboard() {
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <button className="adm-modal-ficha-link" onClick={() => { navigateTo("leads"); setInsights(null); }} style={{ fontSize: 14 }}>← Voltar para Leads</button>
                 <div style={{ flex: 1 }} />
+                <button className="adm-ficha-topbar-share" onClick={() => {
+                  const url = dl.share_token
+                    ? `${window.location.origin}/ficha/${dl.share_token}`
+                    : `${window.location.origin}/admin/lead/${dl.id}`;
+                  navigator.clipboard.writeText(url);
+                  const btn = document.activeElement as HTMLButtonElement;
+                  const orig = btn.textContent;
+                  btn.textContent = "Copiado!";
+                  setTimeout(() => { btn.textContent = orig; }, 1500);
+                }}>
+                  Compartilhar
+                </button>
                 <a
                   href={`https://wa.me/${(dl.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`}
                   target="_blank" rel="noopener noreferrer"
