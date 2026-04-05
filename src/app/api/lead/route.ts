@@ -11,6 +11,7 @@ interface LeadInput {
   urgencia: string;
   investimento: string;
   dores: string[];
+  ideias?: unknown[];
 }
 
 function calcQualification(data: LeadInput): {
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
       internal_score: result.internalScore,
       top_percent: result.topPercent,
       share_token: shareToken,
+      ideias: data.ideias || null,
     }) : { error: null };
 
     if (dbError) {
