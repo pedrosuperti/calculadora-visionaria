@@ -440,7 +440,12 @@ export default function LeadFichaPage() {
           </a>
           <button
             className="adm-ficha-copy"
-            onClick={() => { navigator.clipboard.writeText(window.location.href); }}
+            onClick={() => {
+              const url = lead.share_token
+                ? `${window.location.origin}/ficha/${lead.share_token}`
+                : window.location.href;
+              navigator.clipboard.writeText(url);
+            }}
           >
             📋 Copiar link da ficha
           </button>
