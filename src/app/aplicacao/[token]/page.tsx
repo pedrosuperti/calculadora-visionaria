@@ -108,7 +108,28 @@ export default function AplicacaoPage() {
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Load lead info
+  // Map calculator values to form options
+  const mapFaturamento = (v: string): string => {
+    const lower = (v || "").toLowerCase();
+    if (lower.includes("10 mil a") || lower.includes("10mil")) return "R$10 mil a R$50 mil";
+    if (lower.includes("50 mil a") || lower.includes("50mil")) return "R$50 mil a R$100 mil";
+    if (lower.includes("100 mil") && lower.includes("500")) return "R$100 mil a R$500 mil";
+    if (lower.includes("500 mil") && lower.includes("milh")) return "R$500 mil a R$1 milhao";
+    if (lower.includes("milh") && lower.includes("5")) return "R$1 milhao a R$5 milhoes";
+    if (lower.includes("10 mil") || lower.includes("10mil") || lower.includes("ate")) return "ate R$10 mil";
+    return "";
+  };
+
+  const mapEquipe = (v: string): string => {
+    const lower = (v || "").toLowerCase();
+    if (lower.includes("so eu") || lower.includes("só eu") || lower === "1") return "Somente eu";
+    if (lower.includes("2") && lower.includes("5")) return "2 a 5";
+    if (lower.includes("6") && lower.includes("15")) return "6 a 15";
+    if (lower.includes("mais") || lower.includes("15") || lower.includes("50") || lower.includes("200")) return "16 a 50";
+    return "";
+  };
+
+  // Load lead info + pre-fill from calculator data
   useEffect(() => {
     if (!token) return;
     fetch(`/api/aplicacao/${token}`)
@@ -119,13 +140,27 @@ export default function AplicacaoPage() {
       .then((data) => {
         setLeadName(data.nome || "");
         setAlreadySubmitted(data.already_submitted || false);
-        // Pre-fill name if we have it
-        if (data.nome) {
-          setAnswers((prev) => ({ ...prev, nome: data.nome }));
+        // Pre-fill from calculator data
+        const prefill: Record<string, string> = {};
+        if (data.nome) prefill.nome = data.nome;
+        if (data.whatsapp) prefill.telefone = data.whatsapp;
+        if (data.faturamento) {
+          const mapped = mapFaturamento(data.faturamento);
+          if (mapped) prefill.faturamento = mapped;
         }
+        if (data.equipe) {
+          const mapped = mapEquipe(data.equipe);
+          if (mapped) prefill.funcionarios = mapped;
+        }
+        if (data.mercado) prefill.ramo = data.mercado;
+        if (data.dores && Array.isArray(data.dores) && data.dores.length > 0) {
+          prefill.desafios = data.dores.join(", ");
+        }
+        setAnswers(prefill);
       })
       .catch(() => setError("Link invalido ou expirado."))
       .finally(() => setLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const totalSteps = FIELDS.length;
@@ -339,6 +374,9 @@ export default function AplicacaoPage() {
             <div className="app-step-num">{step + 1}.</div>
             <h2 className="app-field-title">{field.title}{field.required ? <span className="app-required">*</span> : ""}</h2>
             {field.subtitle && <p className="app-field-sub">{field.subtitle}</p>}
+            {value && ["nome", "telefone", "faturamento", "funcionarios", "ramo", "desafios"].includes(field.id) && (
+              <div className="app-prefilled">Preenchido com seus dados da Calculadora — confira e corrija se necessario</div>
+            )}
 
             {/* TEXT / EMAIL / TEL */}
             {(field.type === "text" || field.type === "email" || field.type === "tel") && (

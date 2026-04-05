@@ -14,7 +14,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     const { data, error } = await supabase
       .from("leads-calculadora-visionaria")
-      .select("id, nome, formsapp_completed")
+      .select("id, nome, whatsapp, faturamento, equipe, mercado, dores, formsapp_completed")
       .eq("share_token", token)
       .single();
 
@@ -24,6 +24,11 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
     return NextResponse.json({
       nome: data.nome,
+      whatsapp: data.whatsapp,
+      faturamento: data.faturamento,
+      equipe: data.equipe,
+      mercado: data.mercado,
+      dores: data.dores,
       already_submitted: !!data.formsapp_completed,
     });
   } catch (error) {
