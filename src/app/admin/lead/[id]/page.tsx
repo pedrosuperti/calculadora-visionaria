@@ -34,9 +34,11 @@ function TagBadges({ lead }: { lead: Lead }) {
 }
 
 export default function LeadFichaPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [authed, setAuthed] = useState(() => {
     if (typeof window !== "undefined") return !!sessionStorage.getItem("adm_token");
     return false;
@@ -56,11 +58,18 @@ export default function LeadFichaPage() {
         setAuthed(false);
         return;
       }
+      if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
       if (res.ok) {
         const data: Lead = await res.json();
         const s = data.internal_score || 0;
         data.tier = s >= 70 ? "hot" : s >= 40 ? "warm" : "cold";
         setLead(data);
+        setNotFound(false);
+      } else {
+        setNotFound(true);
       }
     } catch (e) {
       console.error("Fetch lead error:", e);
@@ -147,11 +156,20 @@ export default function LeadFichaPage() {
     );
   }
 
+  if (!lead && !loading) {
+    return (
+      <div className="adm-ficha-loading">
+        <p>Lead não encontrado{notFound ? ` (ID: ${id})` : ""}.</p>
+        <a href="/admin" className="adm-ficha-back-link">← Voltar para leads</a>
+      </div>
+    );
+  }
+
   if (!lead) {
     return (
       <div className="adm-ficha-loading">
-        <p>Lead não encontrado.</p>
-        <a href="/admin" className="adm-ficha-back-link">← Voltar para leads</a>
+        <div className="adm-insights-spinner" />
+        <span>Carregando ficha...</span>
       </div>
     );
   }
