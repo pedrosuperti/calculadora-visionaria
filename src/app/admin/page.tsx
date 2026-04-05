@@ -1843,6 +1843,9 @@ function SyncSection() {
   const [auditing, setAuditing] = useState(false);
   const [auditResult, setAuditResult] = useState<{ total_with_formsapp: number; potential_mismatches: number; mismatches: { lead_id: number; lead_name: string; lead_whatsapp: string; form_name: string; form_phone: string; form_company: string }[] } | null>(null);
   const [unlinking, setUnlinking] = useState<number | null>(null);
+  const [fixingAll, setFixingAll] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [fixAllResult, setFixAllResult] = useState<any>(null);
 
   const runAudit = async () => {
     setAuditing(true);
@@ -1865,6 +1868,17 @@ function SyncSection() {
       else { alert(data.message); runAudit(); fetchUnmatched(); }
     } catch (e) { alert("Erro: " + String(e)); }
     finally { setUnlinking(null); }
+  };
+
+  const handleFixAll = async () => {
+    setFixingAll(true); setFixAllResult(null);
+    try {
+      const res = await fetch("/api/admin/formsapp-fix-all", { method: "POST", headers: authHeaders() });
+      const data = await res.json();
+      if (data.error) alert("Erro: " + data.error);
+      else { setFixAllResult(data); fetchUnmatched(); }
+    } catch (e) { alert("Erro: " + String(e)); }
+    finally { setFixingAll(false); }
   };
 
   const runSetup = async () => {
@@ -2020,8 +2034,35 @@ function SyncSection() {
 
           <div className="adm-ficha-section">
             <h2 className="adm-ficha-section-title">3. Auditoria de Matches</h2>
-            <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>Verifica se os formularios foram vinculados aos leads corretos (compara nome do lead vs nome do formulario).</p>
-            <button className="adm-btn-insights" onClick={runAudit} disabled={auditing}>{auditing ? "Verificando..." : "Verificar Matches"}</button>
+            <p style={{ color: "rgba(226,221,212,.5)", fontSize: 13, marginBottom: 12 }}>Verifica, corrige e re-vincula automaticamente formularios atribuidos ao lead errado.</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="adm-btn-insights" onClick={runAudit} disabled={auditing}>{auditing ? "Verificando..." : "Verificar Matches"}</button>
+              <button className="adm-btn-insights" onClick={handleFixAll} disabled={fixingAll} style={{ background: "rgba(239,68,68,.15)", borderColor: "rgba(239,68,68,.3)" }}>{fixingAll ? "Corrigindo tudo..." : "Corrigir Tudo Automaticamente"}</button>
+            </div>
+            {fixAllResult && (
+              <div style={{ marginTop: 16, padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 4, fontSize: 13 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8, color: "#C9A84C" }}>Resultado da Correcao Automatica</div>
+                <p>Leads verificados: <strong>{fixAllResult.step1_audit?.total_checked}</strong></p>
+                <p style={{ color: "#EF4444" }}>Erros encontrados: <strong>{fixAllResult.step1_audit?.mismatches_found}</strong></p>
+                {fixAllResult.step2_unlinked?.details?.length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <strong>Desvinculados:</strong>
+                    {fixAllResult.step2_unlinked.details.map((u: { lead_id: number; lead_name: string; form_name: string }, i: number) => (
+                      <div key={i} style={{ color: "#EF4444", marginLeft: 12, fontSize: 12 }}>Lead #{u.lead_id} ({u.lead_name}) tinha form de "{u.form_name}"</div>
+                    ))}
+                  </div>
+                )}
+                <p style={{ color: "#22C55E", marginTop: 8 }}>Re-vinculados: <strong>{fixAllResult.step3_resync?.rematched}</strong></p>
+                {fixAllResult.step3_resync?.details?.length > 0 && (
+                  <div style={{ marginTop: 4 }}>
+                    {fixAllResult.step3_resync.details.map((r: { lead_id: number; lead_name: string; form_name: string; method: string }, i: number) => (
+                      <div key={i} style={{ color: "#22C55E", marginLeft: 12, fontSize: 12 }}>"{r.form_name}" vinculado a {r.lead_name} (#{r.lead_id}) via {r.method}</div>
+                    ))}
+                  </div>
+                )}
+                <p style={{ color: "rgba(226,221,212,.4)", marginTop: 8 }}>Ainda sem match: <strong>{fixAllResult.step3_resync?.still_unmatched}</strong></p>
+              </div>
+            )}
             {auditResult && (
               <div style={{ marginTop: 16, padding: 16, background: "rgba(255,255,255,.03)", borderRadius: 4, fontSize: 13 }}>
                 <p>Total com formulario: <strong>{auditResult.total_with_formsapp}</strong></p>
