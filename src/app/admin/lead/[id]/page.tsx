@@ -7,6 +7,18 @@ import { CONTACT_LABELS, CONTACT_COLORS, TIER_COLORS } from "@/lib/admin-types";
 import type { ContactStatus } from "@/lib/admin-types";
 import { timeAgo, parseFormsAppData, computeTags } from "@/lib/admin-utils";
 
+// ─── AUTH HELPERS ────────────────────────────────────────────────────────────
+function getAuthToken(): string {
+  if (typeof window === "undefined") return "";
+  return sessionStorage.getItem("adm_token") || "";
+}
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  return { "Authorization": `Bearer ${getAuthToken()}`, ...extra };
+}
+function authJsonHeaders(): Record<string, string> {
+  return authHeaders({ "Content-Type": "application/json" });
+}
+
 function TagBadges({ lead }: { lead: Lead }) {
   const tags = computeTags(lead);
   if (tags.length === 0) return null;
@@ -25,22 +37,25 @@ export default function LeadFichaPage() {
   const { id } = useParams();
   const [lead, setLead] = useState<Lead | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authed, setAuthed] = useState(false);
+  const [authed, setAuthed] = useState(() => {
+    if (typeof window !== "undefined") return !!sessionStorage.getItem("adm_token");
+    return false;
+  });
   const [pw, setPw] = useState("");
+  const [loginError, setLoginError] = useState("");
   const [insights, setInsights] = useState<Record<string, unknown> | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && sessionStorage.getItem("adm_auth") === "true") {
-      setAuthed(true);
-    }
-  }, []);
 
   const fetchLead = useCallback(async () => {
     if (!id) return;
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/leads/${id}`);
+      const res = await fetch(`/api/admin/leads/${id}`, { headers: authHeaders() });
+      if (res.status === 401) {
+        sessionStorage.removeItem("adm_token");
+        setAuthed(false);
+        return;
+      }
       if (res.ok) {
         const data: Lead = await res.json();
         const s = data.internal_score || 0;
@@ -62,7 +77,7 @@ export default function LeadFichaPage() {
     if (!lead) return;
     await fetch("/api/admin/leads/update", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: authJsonHeaders(),
       body: JSON.stringify({ id: lead.id, ...data }),
     });
   };
@@ -74,7 +89,7 @@ export default function LeadFichaPage() {
     try {
       const res = await fetch("/api/admin/insights", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authJsonHeaders(),
         body: JSON.stringify({
           nome: lead.nome, mercado: lead.mercado, faturamento: lead.faturamento,
           equipe: lead.equipe, urgencia: lead.urgencia, investimento: lead.investimento,
@@ -90,10 +105,23 @@ export default function LeadFichaPage() {
     }
   };
 
-  const handleLogin = () => {
-    if (pw === "visor2026") {
-      sessionStorage.setItem("adm_auth", "true");
-      setAuthed(true);
+  const handleLogin = async () => {
+    setLoginError("");
+    try {
+      const res = await fetch("/api/admin/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (res.ok) {
+        const { token } = await res.json();
+        sessionStorage.setItem("adm_token", token);
+        setAuthed(true);
+      } else {
+        setLoginError("Senha incorreta");
+      }
+    } catch {
+      setLoginError("Erro de conexão");
     }
   };
 
@@ -104,6 +132,7 @@ export default function LeadFichaPage() {
           <h1 className="adm-login-title">CENTRAL DE LEADS</h1>
           <input className="adm-login-input" type="password" placeholder="Senha" value={pw} onChange={(e) => setPw(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
           <button className="adm-login-btn" onClick={handleLogin}>Entrar</button>
+          {loginError && <p style={{ color: "#EF4444", fontSize: 13, marginTop: 8 }}>{loginError}</p>}
         </div>
       </div>
     );
