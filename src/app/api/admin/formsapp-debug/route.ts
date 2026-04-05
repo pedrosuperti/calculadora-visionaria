@@ -1,12 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
 import { validateAdminAuth, unauthorizedResponse } from "@/lib/admin-auth";
+import { parseFormsAppData } from "@/lib/admin-utils";
 
 export async function GET(request: NextRequest) {
   if (!validateAdminAuth(request)) return unauthorizedResponse();
   try {
     const supabase = getSupabase();
     if (!supabase) return NextResponse.json({ error: "DB not configured" }, { status: 503 });
+
+    // If ?lead_id=X is passed, return raw formsapp_data + parsed result for debugging
+    const leadId = request.nextUrl.searchParams.get("lead_id");
+    if (leadId) {
+      const { data: lead } = await supabase
+        .from("leads-calculadora-visionaria")
+        .select("id, nome, formsapp_completed, formsapp_data")
+        .eq("id", parseInt(leadId, 10))
+        .single();
+      if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+      const parsed = parseFormsAppData(lead.formsapp_data as Record<string, unknown> | null);
+      return NextResponse.json({
+        lead_id: lead.id,
+        nome: lead.nome,
+        formsapp_completed: lead.formsapp_completed,
+        raw_formsapp_data: lead.formsapp_data,
+        raw_keys: lead.formsapp_data ? Object.keys(lead.formsapp_data) : [],
+        parsed_qa: parsed,
+      });
+    }
 
     // Count leads with formsapp_completed
     const { count: totalLeads } = await supabase
