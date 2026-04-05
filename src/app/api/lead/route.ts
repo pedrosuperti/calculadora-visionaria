@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabase } from "@/lib/supabase";
+import { randomBytes } from "crypto";
 
 interface LeadInput {
   nome: string;
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
 
     // Save to Supabase
     const supabase = getSupabase();
+    const shareToken = randomBytes(12).toString("hex");
     const { error: dbError } = supabase ? await supabase.from("leads-calculadora-visionaria").insert({
       nome: data.nome,
       mercado: data.mercado,
@@ -99,6 +101,7 @@ export async function POST(request: NextRequest) {
       tier: result.tier,
       internal_score: result.internalScore,
       top_percent: result.topPercent,
+      share_token: shareToken,
     }) : { error: null };
 
     if (dbError) {

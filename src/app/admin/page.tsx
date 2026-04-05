@@ -70,6 +70,7 @@ interface Lead {
   formsapp_completed: boolean;
   formsapp_at: string | null;
   formsapp_data: Record<string, unknown> | null;
+  share_token: string | null;
 }
 
 interface CalcEvent {
@@ -1594,7 +1595,12 @@ export default function AdminDashboard() {
                 >
                   Abrir WhatsApp {insights ? "(com frase gancho)" : ""}
                 </a>
-                <button className="adm-ficha-copy" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/admin/lead/${dl.id}`); }}>
+                <button className="adm-ficha-copy" onClick={() => {
+                  const url = dl.share_token
+                    ? `${window.location.origin}/ficha/${dl.share_token}`
+                    : `${window.location.origin}/admin/lead/${dl.id}`;
+                  navigator.clipboard.writeText(url);
+                }}>
                   📋 Copiar link da ficha
                 </button>
               </div>

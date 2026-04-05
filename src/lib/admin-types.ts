@@ -18,6 +18,7 @@ export interface Lead {
   formsapp_completed: boolean;
   formsapp_at: string | null;
   formsapp_data: Record<string, unknown> | null;
+  share_token: string | null;
 }
 
 export type ContactStatus = "" | "novo" | "contactado" | "agendou" | "sem_resposta" | "descartado";
