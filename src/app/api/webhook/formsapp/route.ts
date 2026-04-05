@@ -6,7 +6,7 @@ const WEBHOOK_SECRET = process.env.FORMSAPP_WEBHOOK_SECRET;
 // ─── MATCHING UTILS ──────────────────────────────────────────────────────
 
 function normalizeStr(s: string): string {
-  return s
+  return (s || "")
     .toLowerCase()
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // remove accents
     .replace(/[^a-z0-9\s]/g, "")
